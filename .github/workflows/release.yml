@@ -77,11 +77,18 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Android SDK + NDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install NDK / SDK packages
-        run: sdkmanager "ndk;26.3.11579264" "platforms;android-34" "build-tools;34.0.0"
+      - name: Android SDK + NDK (предустановлены в образе; добираем недостающее)
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          NDK_DIR="$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$NDK_DIR" ]; then
+            sdkmanager "ndk;27.2.12479018"
+            NDK_DIR="$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)"
+          fi
+          echo "NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
+          echo "NDK: $NDK_DIR"
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -97,7 +104,7 @@ jobs:
       - name: Generate Android project
         run: npx tauri android init
         env:
-          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.3.11579264
+          NDK_HOME: ${{ env.NDK_HOME }}
 
       - name: Apply Aristos overlay (widgets + manifest)
         run: cp -r src-tauri/custom-android/. src-tauri/gen/android/
@@ -123,7 +130,7 @@ jobs:
       - name: Build APK (universal)
         run: npx tauri android build --apk
         env:
-          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.3.11579264
+          NDK_HOME: ${{ env.NDK_HOME }}
           TAURI_ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/keystore.jks
           TAURI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'aristos-sign-2026' }}
           TAURI_ANDROID_KEY_ALIAS: aristos
