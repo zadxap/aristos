@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="kk" data-concept="slate-dither">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Aristos — Жаңа Дизайн Тұжырымдамалары</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       0. БАЗОВЫЙ СБРОС И СИСТЕМА ПЕРЕМЕННЫХ
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* --------------------------------------------------------------------------
+       КОНЦЕПТ 1: SLATE MONOLITH & DITHER (Серый монолит, гладкие формы, растр)
+       -------------------------------------------------------------------------- */
+    html[data-concept="slate-dither"] {
+      --bg: #131518;
+      --card-bg: #1c1f24;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover: #22262d;
+      --text-main: #f3f4f6;
+      --text-muted: #8b929e;
+      --accent: #e2e8f0; /* Холодный матовый титан */
+      --accent-highlight: #ffffff;
+      --accent-badge-bg: #282d35;
+      --accent-badge-text: #ffffff;
+      --radius-card: 18px; /* Гладкие, обтекаемые формы */
+      --radius-pill: 9999px;
+      --font-ui: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      --pattern: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 0);
+      --pattern-size: 6px 6px; /* Тонкий растровый дитеринг */
+      --bar-gradient: linear-gradient(90deg, #4b5563, #e2e8f0);
+    }
+
+    /* --------------------------------------------------------------------------
+       КОНЦЕПТ 2: ELECTRIC COBALT AURORA (Глубокий синий, градиенты, неон)
+       -------------------------------------------------------------------------- */
+    html[data-concept="electric-cobalt"] {
+      --bg: #060913;
+      --card-bg: rgba(14, 21, 38, 0.7);
+      --card-border: rgba(56, 128, 255, 0.22);
+      --card-hover: rgba(20, 31, 56, 0.9);
+      --text-main: #f8fafc;
+      --text-muted: #8295b5;
+      --accent: #2563eb;
+      --accent-highlight: #60a5fa;
+      --accent-badge-bg: rgba(37, 99, 235, 0.2);
+      --accent-badge-text: #93c5fd;
+      --radius-card: 16px;
+      --radius-pill: 12px;
+      --font-ui: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --card-shadow: 0 10px 30px -5px rgba(2, 6, 23, 0.8), 0 0 0 1px rgba(56, 128, 255, 0.15);
+      --pattern: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.22) 0%, transparent 65%);
+      --pattern-size: 100% 900px;
+      --bar-gradient: linear-gradient(90deg, #1d4ed8, #38bdf8);
+    }
+
+    /* --------------------------------------------------------------------------
+       КОНЦЕПТ 3: INDUSTRIAL STUDIO DECK (Аппаратный синтезатор, канавки, янтарь)
+       -------------------------------------------------------------------------- */
+    html[data-concept="studio-deck"] {
+      --bg: #0f1012;
+      --card-bg: #18191c;
+      --card-border: #282a2e;
+      --card-hover: #1f2024;
+      --text-main: #e8e8ea;
+      --text-muted: #72747d;
+      --accent: #ff9900; /* Янтарный LED */
+      --accent-highlight: #ffb84d;
+      --accent-badge-bg: rgba(255, 153, 0, 0.12);
+      --accent-badge-text: #ffb84d;
+      --radius-card: 6px; /* Рубленые индустриальные углы */
+      --radius-pill: 4px;
+      --font-ui: 'Space Grotesk', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 3px 6px rgba(0,0,0,0.5);
+      /* Микроканавки аппаратной панели */
+      --pattern: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.015) 4px);
+      --pattern-size: 100% 4px;
+      --bar-gradient: linear-gradient(90deg, #b45309, #ff9900);
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: var(--pattern);
+      background-size: var(--pattern-size);
+      background-repeat: no-repeat;
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      line-height: 1.5;
+      transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ==========================================================================
+       СТИЛЕВОЙ ПЕРЕКЛЮЧАТЕЛЬ (ТОЛЬКО ДЛЯ ТЕСТА)
+       ========================================================================== */
+    .style-switcher {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 24px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+    }
+    .switcher-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+    .btn-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .switch-btn {
+      padding: 6px 14px;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      color: var(--text-muted);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .switch-btn:hover {
+      color: var(--text-main);
+      border-color: var(--text-muted);
+    }
+    .switch-btn.active {
+      background: var(--accent-badge-bg);
+      border-color: var(--accent);
+      color: var(--accent-highlight);
+    }
+
+    /* ==========================================================================
+       ОСНОВНАЯ РАЗМЕТКА
+       ========================================================================== */
+    .layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      max-width: 1440px;
+      margin: 0 auto;
+      min-height: calc(100vh - 48px);
+    }
+    @media (max-width: 1024px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    /* БОКОВОЕ МЕНЮ */
+    aside.sidebar {
+      border-right: 1px solid var(--card-border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 18px;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-pill);
+      background: var(--accent);
+      color: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 15px;
+    }
+    html[data-concept="electric-cobalt"] .brand-icon {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+    }
+    .brand-text h2 {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+    .brand-text p {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+    .nav-group {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 12px;
+    }
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: var(--radius-pill);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover {
+      background: var(--card-hover);
+      color: var(--text-main);
+    }
+    .nav-btn.active {
+      background: var(--card-bg);
+      color: var(--text-main);
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--card-border);
+    }
+    html[data-concept="electric-cobalt"] .nav-btn.active {
+      border-color: rgba(56, 128, 255, 0.4);
+      background: rgba(37, 99, 235, 0.12);
+      color: #bfdbfe;
+    }
+
+    /* ГЛАВНОЕ ПОЛОТНО */
+    main.viewport {
+      padding: 32px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    @media (max-width: 768px) {
+      main.viewport { padding: 16px; }
+    }
+
+    .top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .title-sub {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent-highlight);
+      margin-bottom: 4px;
+      display: block;
+    }
+    .title-main {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .term-pill {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-pill);
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .term-pill-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+    html[data-concept="electric-cobalt"] .term-pill-dot {
+      box-shadow: 0 0 8px #3b82f6;
+    }
+
+    /* СЕТКА ДАШБОРДА */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.85fr) minmax(320px, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+    @media (max-width: 1080px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+
+    /* КАРТОЧКИ */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-card);
+      box-shadow: var(--card-shadow);
+      padding: 20px;
+      backdrop-filter: blur(16px);
+      transition: border-color 0.2s ease;
+    }
+
+    /* БАННЕР СТАТУСА */
+    .status-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .status-indicator {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-pill);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      background: var(--accent-badge-bg);
+      color: var(--accent-highlight);
+      border: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+    .status-text h3 {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .status-text p {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ПРОГРЕСС СЕМЕСТРА */
+    .week-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .week-title {
+      font-size: 15px;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+    .week-count {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent-highlight);
+      font-weight: 700;
+    }
+    .progress-track {
+      height: 5px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 73%;
+      background: var(--bar-gradient);
+    }
+
+    /* ДНИ НЕДЕЛИ */
+    .days-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin: 18px 0;
+    }
+    .day-selector {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-pill);
+      color: var(--text-muted);
+      padding: 8px 0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .day-selector:hover {
+      background: var(--card-hover);
+      color: var(--text-main);
+    }
+    .day-selector.active {
+      background: var(--accent-badge-bg);
+      color: var(--accent-highlight);
+      border-color: var(--accent);
+    }
+
+    /* РАСПИСАНИЕ (TIMELINE) */
+    .schedule-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .schedule-header h3 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .timeline-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .class-row {
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-card);
+      box-shadow: var(--card-shadow);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .class-row:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .class-time {
+      display: flex;
+      flex-direction: column;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .class-time span {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .class-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 5px;
+    }
+    .badge {
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-badge-bg);
+      color: var(--accent-badge-text);
+      border: 1px solid var(--card-border);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .meta-tag {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .class-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .class-topic {
+      margin-top: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border-left: 2px solid var(--accent);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .class-topic strong {
+      color: var(--text-main);
+    }
+
+    /* БОКОВЫЕ ВИДЖЕТЫ */
+    .widgets-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .widget-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .widget-title a {
+      font-size: 11px;
+      color: var(--accent-highlight);
+      text-decoration: none;
+    }
+
+    /* ЕРТЕҢГІ КЕСТЕ */
+    .tomorrow-entry {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--card-border);
+      font-size: 11.5px;
+    }
+    .tomorrow-entry:last-child { border-bottom: none; }
+    .t-time {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--accent-highlight);
+      min-width: 50px;
+    }
+    .t-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 10px;
+    }
+    .t-room {
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+    }
+
+    /* ДЕДЛАЙНЫ */
+    .deadline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .deadline-card {
+      padding: 9px 12px;
+      border-radius: var(--radius-pill);
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      text-decoration: none;
+      color: inherit;
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      align-items: center;
+      gap: 10px;
+      transition: border-color 0.15s;
+    }
+    .deadline-card:hover {
+      border-color: var(--accent);
+    }
+    .d-date {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--accent-highlight);
+    }
+    .d-task {
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* GPA */
+    .gpa-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .gpa-metric {
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.15);
+      border: 1px solid var(--card-border);
+      border-radius: calc(var(--radius-card) - 4px);
+    }
+    .gpa-label {
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+    .gpa-value {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+    .gpa-value.accent {
+      color: var(--accent-highlight);
+    }
+
+    /* РАДАР */
+    .radar-wrapper {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0;
+    }
+    .radar-svg {
+      width: 100%;
+      max-width: 230px;
+      height: auto;
+    }
+    .radar-mesh {
+      stroke: var(--card-border);
+      fill: none;
+    }
+    .radar-shape {
+      fill: var(--accent);
+      fill-opacity: 0.2;
+      stroke: var(--accent);
+      stroke-width: 1.5;
+    }
+    html[data-concept="electric-cobalt"] .radar-shape {
+      fill: #3b82f6;
+      fill-opacity: 0.25;
+      stroke: #60a5fa;
+      filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
+    }
+    .radar-lbl {
+      font-family: var(--font-mono);
+      font-size: 8px;
+      fill: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       ПЕРЕКЛЮЧАТЕЛЬ ДИЗАЙНОВ (Live Demo)
+       ======================================================================== -->
+  <div class="style-switcher">
+    <div class="switcher-label">⚡ Жаңа стильді таңдаңыз:</div>
+    <div class="btn-group">
+      <button class="switch-btn active" onclick="setConcept('slate-dither', this)">
+        🔘 1. Slate Dither (Серый монолит + гладкие формы)
+      </button>
+      <button class="switch-btn" onclick="setConcept('electric-cobalt', this)">
+        ⚡ 2. Electric Cobalt (Глубокий синий + градиенты)
+      </button>
+      <button class="switch-btn" onclick="setConcept('studio-deck', this)">
+        🎛️ 3. Studio Deck (Аппаратный пульт + янтарь)
+      </button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- ======================================================================
+         БОКОВАЯ ПАНЕЛЬ НАВИГАЦИИ
+         ====================================================================== -->
+    <aside class="sidebar">
+      <div>
+        <div class="brand">
+          <div class="brand-icon">A</div>
+          <div class="brand-text">
+            <h2>Aristos</h2>
+            <p>Студенттік дашборд</p>
+          </div>
+        </div>
+
+        <ul class="nav-group">
+          <li><a href="#" class="nav-btn active"><span>Басты бет</span></a></li>
+          <li><a href="#" class="nav-btn"><span>Күнтізбе</span></a></li>
+          <li><a href="#" class="nav-btn"><span>Мерзімдер</span></a></li>
+          <li><a href="#" class="nav-btn"><span>Бағалар</span></a></li>
+          <li><a href="#" class="nav-btn"><span>GPA</span></a></li>
+          <li><a href="#" class="nav-btn"><span>AI Кеңесші</span></a></li>
+          <li><a href="#" class="nav-btn"><span>Пәндер</span></a></li>
+        </ul>
+      </div>
+
+      <div style="border-top: 1px solid var(--card-border); padding-top: 16px;">
+        <button class="nav-btn" style="width: 100%; border: 1px solid var(--card-border); justify-content: space-between;">
+          <span>⚙ Баптаулар</span>
+          <span style="font-family: var(--font-mono); font-size: 10px;">⌘K</span>
+        </button>
+        <p style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 10px;">
+          Aristos v0.2 • Офлайн PWA
+        </p>
+      </div>
+    </aside>
+
+    <!-- ======================================================================
+         ОСНОВНОЙ КОНТЕНТ ДАШБОРДА
+         ====================================================================== -->
+    <main class="viewport">
+      <header class="top-header">
+        <div>
+          <span class="title-sub">Aristos · Студенттік кеңістік</span>
+          <h1 class="title-main">Оқу күніңізге шолу</h1>
+        </div>
+        <div class="term-pill">
+          <span class="term-pill-dot"></span>
+          <span>3-курс</span>
+          <span style="color:var(--text-muted)">•</span>
+          <span>1-семестр</span>
+        </div>
+      </header>
+
+      <div class="dashboard-grid">
+        <!-- ЛЕВАЯ КОЛОНКА (Ключевые данные дня) -->
+        <div>
+          <!-- Статус-баннер -->
+          <div class="card status-panel">
+            <div class="status-left">
+              <div class="status-indicator">✓</div>
+              <div class="status-text">
+                <h3>Бүгінгі сабақтар аяқталды</h3>
+                <p>Бүгінгі сабақ кестесі толық аяқталды.</p>
+              </div>
+            </div>
+            <span class="badge">Орындалды</span>
+          </div>
+
+          <!-- Неделя и прогресс -->
+          <div class="card" style="margin-bottom: 18px;">
+            <div class="week-info">
+              <div class="week-title">10 Қараша, Сейсенбі</div>
+              <div class="week-count">11 / 15 апта</div>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill"></div>
+            </div>
+          </div>
+
+          <!-- Выбор дня -->
+          <div class="days-row">
+            <button class="day-selector">Дс</button>
+            <button class="day-selector active">Сс</button>
+            <button class="day-selector">Ср</button>
+            <button class="day-selector">Бс</button>
+            <button class="day-selector">Жм</button>
+            <button class="day-selector">Сн</button>
+            <button class="day-selector">Жс</button>
+          </div>
+
+          <!-- Лента расписания -->
+          <div class="schedule-header">
+            <h3>Апталық кесте</h3>
+            <span style="font-size: 11px; color: var(--text-muted);">6 сабақ</span>
+          </div>
+
+          <div class="timeline-container">
+            <!-- Пара 1 -->
+            <div class="class-row">
+              <div class="class-time">
+                09:00
+                <span>09:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="badge">Практика</span>
+                  <span class="meta-tag">📍 D310</span>
+                  <span class="meta-tag">👤 Пирнепесов Ж.</span>
+                </div>
+                <div class="class-name">Бастауыш мектептің цифрлық сауаттылығы</div>
+              </div>
+            </div>
+
+            <!-- Пара 2 -->
+            <div class="class-row">
+              <div class="class-time">
+                10:00
+                <span>10:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="badge">Практика</span>
+                  <span class="meta-tag">📍 D310</span>
+                  <span class="meta-tag">👤 Пирнепесов Ж.</span>
+                </div>
+                <div class="class-name">Бастауыш мектептің цифрлық сауаттылығы</div>
+              </div>
+            </div>
+
+            <!-- Пара 3 -->
+            <div class="class-row">
+              <div class="class-time">
+                13:00
+                <span>13:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="badge">Практика</span>
+                  <span class="meta-tag">📍 В115</span>
+                  <span class="meta-tag">👤 Шарипова А.Б.</span>
+                </div>
+                <div class="class-name">Инклюзивті білім беру ортасы</div>
+              </div>
+            </div>
+
+            <!-- Пара 4 -->
+            <div class="class-row">
+              <div class="class-time">
+                14:00
+                <span>14:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="badge">Практика</span>
+                  <span class="meta-tag">📍 В115</span>
+                  <span class="meta-tag">👤 Шарипова А.Б.</span>
+                </div>
+                <div class="class-name">Инклюзивті білім беру ортасы</div>
+              </div>
+            </div>
+
+            <!-- Пара 5 -->
+            <div class="class-row">
+              <div class="class-time">
+                16:00
+                <span>16:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="badge">Практика</span>
+                  <span class="meta-tag">📍 Е304</span>
+                  <span class="meta-tag">👤 Конысов А.</span>
+                </div>
+                <div class="class-name">Құқық және сыбайлас жемқорлыққа қарсы саласындағы зерттеу дағдылары</div>
+                <div class="class-topic">
+                  <strong>Тақырып:</strong> Бизнес ортада сыбайлас жемқорлыққа қарсы сананы қалыптастыру.
+                </div>
+              </div>
+            </div>
+
+            <!-- Пара 6 -->
+            <div class="class-row">
+              <div class="class-time">
+                17:00
+                <span>17:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="badge">Практика</span>
+                  <span class="meta-tag">📍 Е304</span>
+                  <span class="meta-tag">👤 Конысов А.</span>
+                </div>
+                <div class="class-name">Құқық және сыбайлас жемқорлыққа қарсы саласындағы зерттеу дағдылары</div>
+                <div class="class-topic">
+                  <strong>Тақырып:</strong> Бизнес ортада сыбайлас жемқорлыққа қарсы сананы қалыптастыру.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ПРАВАЯ КОЛОНКА (Виджеты, дедлайны, аналитика) -->
+        <div class="widgets-col">
+          <!-- Ертеңгі кесте -->
+          <div class="card">
+            <div class="widget-title">
+              <span>Ертеңгі кесте</span>
+              <span style="color:var(--text-muted); font-size: 11px;">Сәрсенбі</span>
+            </div>
+            <div>
+              <div class="tomorrow-entry">
+                <span class="t-time">09:00</span>
+                <span class="t-name">Бұлтты және мобильдік техн.</span>
+                <span class="t-room">D310</span>
+              </div>
+              <div class="tomorrow-entry">
+                <span class="t-time">10:00</span>
+                <span class="t-name">Бұлтты және мобильдік техн.</span>
+                <span class="t-room">D310</span>
+              </div>
+              <div class="tomorrow-entry">
+                <span class="t-time">11:00</span>
+                <span class="t-name">Бастауыш цифрлық сауаттылығы</span>
+                <span class="t-room">В302</span>
+              </div>
+              <div class="tomorrow-entry">
+                <span class="t-time">13:00</span>
+                <span class="t-name">Мәліметтер қоры жүйелері</span>
+                <span class="t-room">D305</span>
+              </div>
+              <div class="tomorrow-entry">
+                <span class="t-time">14:00</span>
+                <span class="t-name">Мәліметтер қоры жүйелері</span>
+                <span class="t-room">D305</span>
+              </div>
+              <div class="tomorrow-entry">
+                <span class="t-time">15:00</span>
+                <span class="t-name">Құқық және жемқорлық зерттеу</span>
+                <span class="t-room">Е308</span>
+              </div>
+              <div class="tomorrow-entry">
+                <span class="t-time">16:00</span>
+                <span class="t-name">Құқық және жемқорлық зерттеу</span>
+                <span class="t-room">Е205</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Дедлайны -->
+          <div class="card">
+            <div class="widget-title">
+              <span>Жақын мерзімдер</span>
+              <a href="#">Барлығы →</a>
+            </div>
+            <div class="deadline-list">
+              <a href="#" class="deadline-card">
+                <span class="d-date">13 Қараша</span>
+                <span class="d-task">Тест №11</span>
+              </a>
+              <a href="#" class="deadline-card">
+                <span class="d-date">14 Қараша</span>
+                <span class="d-task">Тест 11</span>
+              </a>
+              <a href="#" class="deadline-card">
+                <span class="d-date">16 Қараша</span>
+                <span class="d-task">ТЕСТ 12</span>
+              </a>
+              <a href="#" class="deadline-card">
+                <span class="d-date">18 Қараша</span>
+                <span class="d-task">БӨЖ №3</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- GPA -->
+          <div class="card">
+            <div class="widget-title">
+              <span>GPA Көрсеткіші</span>
+              <a href="#">Калькулятор →</a>
+            </div>
+            <div class="gpa-grid">
+              <div class="gpa-metric">
+                <div class="gpa-label">Ағымдағы</div>
+                <div class="gpa-value">2.84</div>
+              </div>
+              <div class="gpa-metric">
+                <div class="gpa-label">Болжам</div>
+                <div class="gpa-value accent">2.84</div>
+              </div>
+            </div>
+            <p style="font-size: 10px; color: var(--text-muted); margin-top: 10px; font-family: var(--font-mono);">
+              144 кредит есепке алынды
+            </p>
+          </div>
+
+          <!-- Радар -->
+          <div class="card">
+            <div class="widget-title">
+              <span>Пәндер радары</span>
+              <span style="font-size: 10px; color: var(--text-muted);">0–100</span>
+            </div>
+            <div class="radar-wrapper">
+              <svg viewBox="0 0 240 240" class="radar-svg">
+                <polygon points="120,40 185,75 195,150 155,200 85,200 45,150 55,75" class="radar-mesh"></polygon>
+                <polygon points="120,70 160,90 170,140 140,170 100,170 70,140 80,90" class="radar-mesh"></polygon>
+                <polygon points="120,50 175,85 180,145 150,195 90,190 55,145 70,80" class="radar-shape"></polygon>
+                <text x="120" y="32" text-anchor="middle" class="radar-lbl">IOS</text>
+                <text x="195" y="75" text-anchor="start" class="radar-lbl">INOPAK</text>
+                <text x="205" y="155" text-anchor="start" class="radar-lbl">OMT</text>
+                <text x="155" y="215" text-anchor="middle" class="radar-lbl">OR</text>
+                <text x="85" y="215" text-anchor="middle" class="radar-lbl">RWP</text>
+                <text x="35" y="155" text-anchor="end" class="radar-lbl">SBD</text>
+                <text x="45" y="75" text-anchor="end" class="radar-lbl">CGNSH</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- AI Кеңесші -->
+          <div class="card">
+            <div class="widget-title">
+              <span>AI Кеңесші түйіні</span>
+              <span>✦</span>
+            </div>
+            <div style="font-size: 11.5px; line-height: 1.6; display: flex; flex-direction: column; gap: 5px;">
+              <div><strong>Жақын:</strong> «Тест №11» (3 күн қалды)</div>
+              <div><strong>Төмен балл:</strong> INOPAK — 77.95%</div>
+              <div><strong>РК:</strong> 2-кезең (12.07 – 12.12)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function setConcept(conceptName, btn) {
+      document.documentElement.setAttribute('data-concept', conceptName);
+      document.querySelectorAll('.switch-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>

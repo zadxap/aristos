@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aristos — Riso</title>
+<link href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,700&family=PT+Sans:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+:root{--paper:#f2e9d0;--ink:#1c1b3d;--pink:#ff5aa5;--blue:#2459ff;--yel:#ffd60a;--card:#fffaf0}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.4 "PT Sans",sans-serif}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;opacity:.3;mix-blend-mode:multiply;
+ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .7 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+a{color:var(--blue);font-weight:700}
+.mono,small{font-family:"IBM Plex Mono",monospace}
+
+.wrap{display:grid;grid-template-columns:240px 1fr;max-width:1560px;margin:auto}
+.side{position:sticky;top:0;height:100vh;padding:28px 24px;display:flex;flex-direction:column}
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.logo .dot{width:50px;height:50px;border-radius:50%;background:var(--blue);display:grid;place-items:center;color:var(--paper);font:700 italic 30px "PT Serif";border:2px solid var(--ink)}
+.logo b{font:700 italic 26px "PT Serif";display:block;line-height:1}
+.logo small{font-size:10px;opacity:.7}
+nav{display:flex;flex-direction:column;gap:11px;flex:1}
+nav a{display:block;padding:9px 18px;border:2px solid var(--ink);border-radius:99px;text-decoration:none;color:var(--ink);background:var(--card);transition:.15s}
+nav a:nth-child(odd){transform:rotate(-1.6deg)}
+nav a:nth-child(even){transform:rotate(1.2deg) translateX(8px)}
+nav a.on{background:var(--pink)}
+nav a:hover{background:var(--yel);transform:rotate(0) translateX(6px)}
+.mz{border:2px dashed var(--ink);border-radius:12px;padding:9px;width:100%;font-weight:700;background:var(--card)}
+.mz:hover{background:var(--blue);color:var(--paper);border-style:solid}
+.ver{margin-top:10px;font-size:11px;text-align:center;opacity:.7}
+
+main{padding:30px 38px 60px 14px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:26px}
+.crumb{font:600 12px "IBM Plex Mono";letter-spacing:.06em;color:var(--blue)}
+h1{margin:6px 0 0;font:700 italic clamp(44px,6vw,92px)/.95 "PT Serif";letter-spacing:-.02em}
+h1 mark{background:linear-gradient(transparent 52%,var(--yel) 52% 92%,transparent 92%);color:inherit;padding:0 6px;margin:0 -6px}
+.chip{border:2px solid var(--ink);border-radius:99px;padding:5px 16px;background:var(--yel);font:600 13px "IBM Plex Mono";transform:rotate(3deg);white-space:nowrap}
+
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:34px}
+.col{display:flex;flex-direction:column;gap:34px}
+.card{position:relative;isolation:isolate;background:var(--card);border:2px solid var(--ink);padding:20px 22px;--c:var(--pink)}
+.card::before{content:"";position:absolute;inset:0;transform:translate(8px,8px);z-index:-1;border-radius:inherit;
+ background:radial-gradient(var(--c) 36%,transparent 41%) 0 0/6px 6px}
+.card.b{--c:var(--blue)}.card.y{--c:var(--yel)}
+.r1{border-radius:28px 4px 28px 4px}.r2{border-radius:4px 28px 4px 28px}
+.ct{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 14px}
+.ct h2{margin:0;font:700 italic 24px "PT Serif"}
+.ct span,.ct a,.ct button{font:600 12px "IBM Plex Mono"}
+.ct button{border:2px solid var(--ink);border-radius:50%;width:30px;height:30px;font-size:16px;background:var(--yel)}
+.ct button:hover{background:var(--pink);transform:rotate(180deg);transition:.3s}
+
+.row1{display:grid;grid-template-columns:1fr 1.3fr;gap:34px}
+.ok{display:flex;gap:14px;align-items:center}
+.ok .c{flex:none;width:52px;height:52px;border-radius:50%;background:var(--pink);border:2px solid var(--ink);display:grid;place-items:center;font-size:26px;font-weight:700;transform:rotate(-8deg)}
+.ok b{font:700 italic 19px/1.1 "PT Serif";display:block}.ok span{font-size:13px;opacity:.75}
+.wk{display:flex;justify-content:space-between;align-items:baseline}
+.wk b{font:700 italic 24px "PT Serif"}.wk span{font:600 13px "IBM Plex Mono"}
+.track{height:24px;border:2px solid var(--ink);border-radius:99px;margin-top:14px;position:relative;overflow:hidden;
+ background:repeating-linear-gradient(90deg,transparent 0 calc(100%/15 - 2px),rgba(28,27,61,.25) calc(100%/15 - 2px) calc(100%/15))}
+.track i{position:absolute;inset:0 auto 0 0;width:73.3%;border-right:2px solid var(--ink);
+ background:radial-gradient(var(--blue) 45%,transparent 50%) 0 0/5px 5px,#cdd9ff}
+
+.tabs{display:flex;gap:10px;flex-wrap:wrap}
+.tabs button{flex:1;min-width:54px;padding:11px 0;border:2px solid var(--ink);border-radius:99px;background:var(--card);font-weight:700}
+.tabs button:nth-child(odd){transform:rotate(-1deg)}.tabs button:nth-child(even){transform:rotate(1deg)}
+.tabs button.on{background:var(--pink);transform:scale(1.08)}
+.tabs button:not(.on):hover{background:var(--yel)}
+
+.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:30px 30px}
+.tk{display:grid;grid-template-columns:84px 1fr;padding:0;--c:var(--ink)}
+.tk::before{opacity:.18}
+.tk .tm{border-right:2px dashed var(--ink);padding:14px 4px;text-align:center;background:var(--k);position:relative}
+.tk .tm b{display:block;font:700 22px "PT Serif"}.tk .tm small{font-size:11px}
+.tk .tm::before,.tk .tm::after{content:"";position:absolute;right:-9px;width:16px;height:16px;border-radius:50%;background:var(--paper);border:2px solid var(--ink)}
+.tk .tm::before{top:-10px;clip-path:inset(50% 0 0 0)}.tk .tm::after{bottom:-10px;clip-path:inset(0 0 50% 0)}
+.tk .in{padding:14px 16px}
+.tk.k0 .tm{--k:var(--pink)}.tk.k1 .tm{--k:#8fa8ff}.tk.k2 .tm{--k:var(--yel)}
+.m{display:flex;gap:6px;flex-wrap:wrap;font:600 11px "IBM Plex Mono";margin-bottom:6px}
+.m span{border:1.5px solid var(--ink);border-radius:99px;padding:0 9px;background:var(--paper)}
+.m .tag{background:var(--ink);color:var(--paper)}
+.tk h3{margin:0;font:700 17px/1.2 "PT Serif"}
+.tk p{margin:8px 0 0;font-size:13px}
+
+.tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.tg div{border:2px solid var(--ink);border-radius:14px;padding:8px 12px;background:var(--paper)}
+.tg time{font:600 12px "IBM Plex Mono";background:var(--yel);padding:0 7px;border-radius:99px;border:1.5px solid var(--ink)}
+.tg b{display:block;font-size:13px;line-height:1.25;margin:6px 0 4px}
+.tg em{font:600 11px "IBM Plex Mono";font-style:normal;opacity:.7}
+
+.dl{display:grid;grid-template-columns:54px 1fr;gap:14px;padding:10px 0;border-bottom:2px dotted var(--ink)}
+.dl:last-child{border:0}
+.dl .d{background:var(--blue);color:var(--paper);border-radius:50% 50% 50% 8px;text-align:center;padding:5px 0 3px;height:58px;border:2px solid var(--ink)}
+.dl .d b{display:block;font:700 22px/1 "PT Serif"}.dl .d small{font-size:9px}
+.dl h4{margin:0;font:700 17px "PT Serif"}.dl p{margin:2px 0 0;font-size:12px;opacity:.75}
+.tip p{margin:0 0 9px}
+.tip .btn{display:inline-block;margin-top:4px;padding:8px 16px;border-radius:99px;background:var(--blue);color:var(--paper);border:2px solid var(--ink);text-decoration:none}
+.tip .btn:hover{background:var(--pink);color:var(--ink)}
+svg{width:100%;display:block}
+.ring{fill:none;stroke:var(--ink);stroke-opacity:.25;stroke-dasharray:3 3}
+.ax{stroke:var(--ink);stroke-opacity:.25}
+.area{fill:var(--pink);fill-opacity:.75;stroke:var(--ink);stroke-width:2;mix-blend-mode:multiply}
+.ghost{fill:var(--blue);fill-opacity:.7;mix-blend-mode:multiply;transform:translate(4px,4px)}
+svg text{font:600 10px "IBM Plex Mono";fill:var(--ink)}
+.cap{font:12px "IBM Plex Mono";margin:0 0 6px;opacity:.7}
+.gp{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.gp div{border:2px solid var(--ink);border-radius:18px;padding:10px 14px;background:var(--paper)}
+.gp div+div{background:var(--yel);transform:rotate(1.5deg)}
+.gp small{font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.gp b{display:block;font:700 italic 52px/1.05 "PT Serif"}
+.gp div+div b{color:var(--blue)}
+.note{margin:12px 0 0;font:12px "IBM Plex Mono"}
+
+@media(max-width:1150px){.cols{grid-template-columns:1fr}.row1{grid-template-columns:1fr}}
+@media(max-width:800px){.wrap{grid-template-columns:1fr}.side{position:static;height:auto}nav{flex-direction:row;flex-wrap:wrap}main{padding:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="side">
+    <div class="logo"><div class="dot">A</div><div><b>Aristos</b><small>Студенттік дашборд</small></div></div>
+    <nav>
+      <a class="on" href="#">Басты бет</a>
+      <a href="#">Күнтізбе</a>
+      <a href="#">Мерзімдер</a>
+      <a href="#">Бағалар</a>
+      <a href="#">GPA</a>
+      <a href="#">AI Кеңесші</a>
+      <a href="#">Пәндер</a>
+    </nav>
+    <div><button class="mz">Мәзір</button><div class="ver mono">Aristos v0.2 • Офлайн PWA</div></div>
+  </aside>
+
+  <main>
+    <div class="head">
+      <div><div class="crumb">Aristos · Студенттік кеңістік</div><h1>Оқу күніңізге <mark>шолу</mark></h1></div>
+      <span class="chip">3-к • 1-сем</span>
+    </div>
+
+    <div class="cols">
+      <div class="col">
+        <div class="row1">
+          <div class="card r1 y">
+            <div class="ok"><div class="c">✓</div><div><b>Бүгінгі сабақтар аяқталды</b><span>Бүгінгі сабақ кестесі толық аяқталды.</span></div></div>
+          </div>
+          <div class="card r2 b">
+            <div class="wk"><b>10 Қараша, Сейсенбі</b><span>11 / 15 апта</span></div>
+            <div class="track"><i></i></div>
+          </div>
+        </div>
+
+        <div class="tabs" id="tabs"></div>
+
+        <div>
+          <div class="ct"><h2>Апталық кесте</h2><span>6 сабақ</span></div>
+          <div class="sg" id="sch"></div>
+        </div>
+
+        <div class="card r2 y">
+          <div class="ct"><h2>Ертеңгі кесте</h2><span>Сәрсенбі</span></div>
+          <div class="tg" id="tmr"></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="card r1">
+          <div class="ct"><h2>Жақын мерзімдер</h2><a href="#">Барлығы →</a></div>
+          <div id="dl"></div>
+        </div>
+
+        <div class="card r2 b tip">
+          <div class="ct"><h2>Апталық кеңес</h2><button title="Жаңарту">⟳</button></div>
+          <p><b>Жақын мерзім:</b> «Тест №11» — 3 күн</p>
+          <p><b>Ең төмен курс:</b> INOPAK 111252-1-L — 77.95%</p>
+          <p><b>Рубежтік бақылау:</b> Рубеждік бақылау 2 — 2026-12-07 … 2026-12-12</p>
+          <a class="btn" href="#">AI Кеңесші →</a>
+        </div>
+
+        <div class="card r1 y">
+          <div class="ct"><h2>Пәндер радары</h2></div>
+          <p class="cap">Canvas курстарының ағымдағы балы, 0–100</p>
+          <svg viewBox="0 0 400 300" id="radar"></svg>
+        </div>
+
+        <div class="card r2">
+          <div class="ct"><h2>GPA</h2><a href="#">Калькулятор →</a></div>
+          <div class="gp"><div><small>Ағымдағы GPA</small><b>2.84</b></div><div><small>GPA болжамы</small><b>2.84</b></div></div>
+          <p class="note">144 кредит есепке алынды</p>
+        </div>
+
+        <div class="card r1 b">
+          <div class="ct"><h2>Жазбалар</h2></div>
+          <a href="https://aristoss.vercel.app">https://aristoss.vercel.app</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const L3="Құқық және сыбайлас жемқорлыққа қарсы саласындағы зерттеу дағдылары",TP="Бизнес ортада сыбайлас жемқорлыққа қарсы сананы қалыптастыру.";
+const S=[["09:00","09:50","D310","Пирнепесов Ж.","Бастауыш мектептің цифрлық сауаттылығы"],["10:00","10:50","D310","Пирнепесов Ж.","Бастауыш мектептің цифрлық сауаттылығы"],["13:00","13:50","B115","Шарипова А.Б.","Инклюзивті білім беру ортасы"],["14:00","14:50","B115","Шарипова А.Б.","Инклюзивті білім беру ортасы"],["16:00","16:50","E304","Конысов А.",L3,TP],["17:00","17:50","E304","Конысов А.",L3,TP]];
+const T=[["09:00","Бұлтты және мобильдік технологиялар","D310"],["10:00","Бұлтты және мобильдік технологиялар","D310"],["11:00","Бастауыш мектептің цифрлық сауаттылығы","B302"],["13:00","Мәліметтер қорының жүйелері","D305"],["14:00","Мәліметтер қорының жүйелері","D305"],["15:00",L3,"E308"],["16:00",L3,"E205"]];
+const D=[["13","Тест №11","Құқық және жемқорлыққа қарсы мәдениет негізд…"],["14","Тест 11","Инклюзивная образовательная среда (IOS 112142-1…"],["16","ТЕСТ 12","Бұлтты және мобильдік технологиялар"],["18","БӨЖ №3","Құқық және жемқорлыққа қарсы мәдениет негізд…"]];
+const R=[["IOS 112142-1-L",92],["INOPAK 111252…",77.95],["OMT 113242-1-L",98],["OR 112142-3-L",95],["RWP 113252-1-L",96],["SBD 113242-1-L",99],["CGNSH 113242-…",88]];
+
+tabs.innerHTML=["Дс","Сс","Ср","Бс","Жм","Сн","Жс"].map((d,i)=>`<button class="${i==1?'on':''}">${d}</button>`).join("");
+tabs.onclick=e=>{if(e.target.tagName=="BUTTON"){[...tabs.children].forEach(b=>b.classList.remove("on"));e.target.classList.add("on")}};
+sch.innerHTML=S.map((s,i)=>`<div class="card tk k${Math.floor(i/2)} ${i%2?'r2':'r1'}"><div class="tm"><b>${s[0]}</b><small>${s[1]}</small></div><div class="in"><div class="m"><span class="tag">Практика</span><span>⌖ ${s[2]}</span><span>${s[3]}</span></div><h3>${s[4]}</h3>${s[5]?`<p><b>Тақырып:</b> ${s[5]}</p>`:""}</div></div>`).join("");
+tmr.innerHTML=T.map(t=>`<div><time>${t[0]}</time><b>${t[1]}</b><em>${t[2]}</em></div>`).join("");
+dl.innerHTML=D.map(d=>`<div class="dl"><div class="d"><b>${d[0]}</b><small>Қараша</small></div><div><h4>${d[1]}</h4><p>${d[2]}</p></div></div>`).join("");
+
+function radar(el,o){const n=R.length,{cx,cy,r}=o;
+ const ang=i=>-Math.PI/2+i*2*Math.PI/n, pt=(i,k)=>[cx+Math.cos(ang(i))*r*k,cy+Math.sin(ang(i))*r*k];
+ const poly=k=>R.map((_,i)=>pt(i,k).join(",")).join(" ");
+ const ar=R.map((d,i)=>pt(i,d[1]/100).join(",")).join(" ");
+ let s=[.25,.5,.75,1].map(k=>`<polygon class="ring" points="${poly(k)}"/>`).join("");
+ s+=R.map((_,i)=>{const p=pt(i,1);return `<line class="ax" x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}"/>`}).join("");
+ s+=`<polygon class="ghost" points="${ar}"/><polygon class="area" points="${ar}"/>`;
+ s+=R.map((d,i)=>{const [x,y]=pt(i,1.13),c=Math.cos(ang(i));return `<text x="${x}" y="${y}" text-anchor="${c>.25?'start':c<-.25?'end':'middle'}" dy=".35em">${d[0]}</text>`}).join("");
+ el.innerHTML=s}
+radar(document.getElementById("radar"),{cx:200,cy:150,r:92});
+</script>
+</body>
+</html>

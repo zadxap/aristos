@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="kk" data-theme="dither">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Aristos — Студенттік дашборд (Redesign)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ============================================================
+       0. CSS RESET & VARIABLES
+       ============================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    /* ------------------------------------------------------------
+       THEME 1: TACTICAL DITHER (Растеризация, тактический дек, киберпанк)
+       ------------------------------------------------------------ */
+    html[data-theme="dither"] {
+      --bg: #0b0d10;
+      --card-bg: #12161c;
+      --card-border: #232b36;
+      --card-hover: #171d25;
+      --text-main: #e6edf3;
+      --text-muted: #798696;
+      --accent: #d4ff00; /* Кислотный неон */
+      --accent-bg: rgba(212, 255, 0, 0.12);
+      --accent-border: #d4ff00;
+      --radius: 3px;
+      --font-body: 'IBM Plex Mono', monospace;
+      --font-heading: 'Cabinet Grotesk', sans-serif;
+      --shadow: none;
+      --tag-border: 1px solid #2d3748;
+      --pattern: radial-gradient(rgba(212, 255, 0, 0.08) 1px, transparent 0);
+      --pattern-size: 8px 8px;
+    }
+
+    /* ------------------------------------------------------------
+       THEME 2: SWISS BRUTALIST (Плакатная графика, плотная сетка)
+       ------------------------------------------------------------ */
+    html[data-theme="brutalist"] {
+      --bg: #f2ede4;
+      --card-bg: #ffffff;
+      --card-border: #141414;
+      --card-hover: #fff9f0;
+      --text-main: #141414;
+      --text-muted: #5c5955;
+      --accent: #ff4800; /* Международный сигнальный оранжевый */
+      --accent-bg: #ff4800;
+      --accent-border: #141414;
+      --radius: 0px;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --font-heading: 'Cabinet Grotesk', sans-serif;
+      --shadow: 4px 4px 0px #141414;
+      --tag-border: 2px solid #141414;
+      --pattern: repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(20,20,20,0.05) 20px);
+      --pattern-size: 100% 20px;
+    }
+
+    /* ------------------------------------------------------------
+       THEME 3: OBSIDIAN MONOLITH (Чистый матовый минимал без шума)
+       ------------------------------------------------------------ */
+    html[data-theme="monolith"] {
+      --bg: #050505;
+      --card-bg: #0c0c0d;
+      --card-border: #1d1e22;
+      --card-hover: #141518;
+      --text-main: #f0f0f2;
+      --text-muted: #6e717a;
+      --accent: #10b981; /* Чистый изумруд */
+      --accent-bg: rgba(16, 185, 129, 0.1);
+      --accent-border: rgba(16, 185, 129, 0.3);
+      --radius: 12px;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --font-heading: 'Plus Jakarta Sans', sans-serif;
+      --shadow: 0 1px 3px rgba(0,0,0,0.4);
+      --tag-border: 1px solid #1d1e22;
+      --pattern: none;
+      --pattern-size: auto;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: var(--pattern);
+      background-size: var(--pattern-size);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      line-height: 1.5;
+      transition: background-color 0.25s, color 0.25s;
+    }
+
+    /* ============================================================
+       THEME SWITCHER FLOATING BAR
+       ============================================================ */
+    .theme-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 20px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(10px);
+    }
+    .theme-bar .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+    .theme-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .theme-btn {
+      padding: 6px 12px;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      color: var(--text-main);
+      cursor: pointer;
+      border-radius: var(--radius);
+      transition: all 0.15s;
+    }
+    .theme-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .theme-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    /* ============================================================
+       LAYOUT WRAPPER
+       ============================================================ */
+    .app-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      max-width: 1560px;
+      margin: 0 auto;
+      min-height: calc(100vh - 50px);
+    }
+    @media (max-width: 1024px) {
+      .app-layout { grid-template-columns: 1fr; }
+    }
+
+    /* ============================================================
+       SIDEBAR
+       ============================================================ */
+    aside.sidebar {
+      border-right: 1px solid var(--card-border);
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 20px;
+      background: var(--bg);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 20px;
+      border-bottom: 1px dashed var(--card-border);
+    }
+    .brand-badge {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      color: #000;
+      font-family: var(--font-heading);
+      font-weight: 900;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius);
+      border: 1px solid var(--accent-border);
+      box-shadow: var(--shadow);
+    }
+    .brand-title {
+      font-family: var(--font-heading);
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+    .brand-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 16px;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .nav-link:hover {
+      background: var(--card-hover);
+      color: var(--text-main);
+    }
+    .nav-link.active {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border-color: var(--card-border);
+      box-shadow: var(--shadow);
+      font-weight: 700;
+    }
+    html[data-theme="dither"] .nav-link.active {
+      border-left: 3px solid var(--accent);
+      color: var(--accent);
+    }
+    html[data-theme="brutalist"] .nav-link.active {
+      background: var(--accent);
+      color: #fff;
+      border: 2px solid #000;
+    }
+    .sidebar-footer {
+      border-top: 1px dashed var(--card-border);
+      padding-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .sidebar-btn {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      border-radius: var(--radius);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ============================================================
+       MAIN CONTENT AREA
+       ============================================================ */
+    main.content {
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow-x: hidden;
+    }
+    @media (max-width: 768px) {
+      main.content { padding: 16px; }
+    }
+
+    .main-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .page-tag {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      font-weight: 800;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+    html[data-theme="brutalist"] .page-tag {
+      background: #141414;
+      color: #fff;
+      padding: 2px 6px;
+    }
+    .page-title {
+      font-family: var(--font-heading);
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+    .semester-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: var(--shadow);
+    }
+    .semester-pill span.dot {
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    /* ============================================================
+       DASHBOARD GRID
+       ============================================================ */
+    .grid-container {
+      display: grid;
+      grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 1024px) {
+      .grid-container { grid-template-columns: 1fr; }
+    }
+
+    /* ============================================================
+       CARDS & PANELS
+       ============================================================ */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+    html[data-theme="brutalist"] .card {
+      border: 2px solid var(--card-border);
+    }
+
+    /* Tactical Corners decoration for Dither theme */
+    html[data-theme="dither"] .card::before {
+      content: "+";
+      position: absolute;
+      top: -6px;
+      right: -4px;
+      font-size: 10px;
+      color: var(--accent);
+      font-family: monospace;
+    }
+
+    /* STATUS BANNER */
+    .status-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+      background: linear-gradient(90deg, var(--card-bg), var(--card-hover));
+    }
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .status-icon {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--accent);
+      background: var(--accent-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: var(--accent);
+      border-radius: var(--radius);
+    }
+    html[data-theme="brutalist"] .status-icon {
+      background: #141414;
+      color: #fff;
+      border: 2px solid #141414;
+    }
+    .status-title {
+      font-family: var(--font-heading);
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .status-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* SEMESTER PROGRESS */
+    .week-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .week-date {
+      font-family: var(--font-heading);
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .week-count {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .progress-bar-wrap {
+      width: 100%;
+      height: 6px;
+      background: var(--card-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      width: 73%;
+      height: 100%;
+      background: var(--accent);
+    }
+
+    /* DAY PICKER */
+    .days-picker {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin: 20px 0;
+      background: var(--card-border);
+      padding: 4px;
+      border-radius: var(--radius);
+    }
+    .day-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 4px;
+      cursor: pointer;
+      border-radius: var(--radius);
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .day-btn:hover {
+      background: var(--card-hover);
+      color: var(--text-main);
+    }
+    .day-btn.active {
+      background: var(--card-bg);
+      color: var(--text-main);
+      box-shadow: var(--shadow);
+    }
+    html[data-theme="dither"] .day-btn.active {
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    html[data-theme="brutalist"] .day-btn.active {
+      background: #141414;
+      color: #fff;
+    }
+
+    /* SCHEDULE TIMELINE */
+    .timeline-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .timeline-title {
+      font-family: var(--font-heading);
+      font-size: 16px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .schedule-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .schedule-item {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 16px;
+      padding: 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    html[data-theme="brutalist"] .schedule-item {
+      border: 2px solid var(--card-border);
+      box-shadow: 2px 2px 0 var(--card-border);
+    }
+    .schedule-item:hover {
+      border-color: var(--accent);
+    }
+    .time-badge {
+      display: flex;
+      flex-direction: column;
+      font-weight: 800;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+    .time-end {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .class-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .type-tag {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      background: var(--accent-bg);
+      color: var(--accent);
+      border-radius: var(--radius);
+      border: 1px solid var(--accent-border);
+    }
+    html[data-theme="brutalist"] .type-tag {
+      background: #141414;
+      color: #fff;
+      border: none;
+    }
+    .room-tag, .teacher-tag {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .class-title {
+      font-family: var(--font-heading);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .topic-box {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: var(--bg);
+      border-left: 2px solid var(--accent);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .topic-box strong {
+      color: var(--text-main);
+    }
+
+    /* RIGHT COLUMN WIDGETS */
+    .sidebar-widget-col {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 8px;
+    }
+    .widget-header h3 {
+      font-family: var(--font-heading);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+    .widget-header a {
+      font-size: 11px;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    /* DEADLINES */
+    .deadline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .deadline-item {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 10px;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s;
+    }
+    .deadline-item:hover {
+      border-color: var(--accent);
+    }
+    .deadline-date {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    html[data-theme="brutalist"] .deadline-date {
+      color: var(--accent);
+    }
+    .deadline-name {
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .deadline-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      grid-column: 2 / -1;
+      margin-top: -4px;
+    }
+
+    /* GPA BOX */
+    .gpa-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .gpa-card {
+      padding: 12px;
+      border: 1px solid var(--card-border);
+      background: var(--bg);
+      border-radius: var(--radius);
+    }
+    .gpa-lbl {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+    .gpa-val {
+      font-family: var(--font-heading);
+      font-size: 26px;
+      font-weight: 900;
+      margin-top: 4px;
+      color: var(--text-main);
+    }
+    .gpa-val.accent {
+      color: var(--accent);
+    }
+
+    /* TOMORROW ACCORDION */
+    .tomorrow-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      border-bottom: 1px dashed var(--card-border);
+      font-size: 11px;
+    }
+    .tomorrow-item:last-child {
+      border-bottom: none;
+    }
+    .tomorrow-time {
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 44px;
+    }
+
+    /* CUSTOM VECTOR RADAR (Clean, non-bloated, non-SVG slop) */
+    .radar-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 0;
+    }
+    .radar-svg {
+      max-width: 260px;
+      width: 100%;
+      height: auto;
+    }
+    .radar-polygon {
+      fill: var(--accent);
+      fill-opacity: 0.2;
+      stroke: var(--accent);
+      stroke-width: 1.5;
+    }
+    .radar-grid {
+      stroke: var(--card-border);
+      fill: none;
+    }
+    .radar-label {
+      font-size: 8px;
+      fill: var(--text-muted);
+      font-family: var(--font-body);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       TOP LIVE STYLE SWITCHER (Для выбора концепта)
+       ============================================================ -->
+  <div class="theme-bar">
+    <div class="label">🎨 Дизайн стилі:</div>
+    <div class="theme-buttons">
+      <button class="theme-btn active" onclick="setTheme('dither', this)">1. Tactical Dither (Кибер / Растр)</button>
+      <button class="theme-btn" onclick="setTheme('brutalist', this)">2. Swiss Brutalist (Журнальный)</button>
+      <button class="theme-btn" onclick="setTheme('monolith', this)">3. Obsidian Monolith (Глубокий)</button>
+    </div>
+  </div>
+
+  <div class="app-layout">
+    <!-- ============================================================
+         SIDEBAR
+         ============================================================ -->
+    <aside class="sidebar">
+      <div>
+        <div class="brand">
+          <div class="brand-badge">A</div>
+          <div>
+            <div class="brand-title">Aristos</div>
+            <div class="brand-sub">Студенттік дашборд</div>
+          </div>
+        </div>
+
+        <ul class="nav-list">
+          <li><a href="#" class="nav-link active"><span>Басты бет</span><span>→</span></a></li>
+          <li><a href="#" class="nav-link"><span>Күнтізбе</span><span>📅</span></a></li>
+          <li><a href="#" class="nav-link"><span>Мерзімдер</span><span>⏳</span></a></li>
+          <li><a href="#" class="nav-link"><span>Бағалар</span><span>🎓</span></a></li>
+          <li><a href="#" class="nav-link"><span>GPA</span><span>Σ</span></a></li>
+          <li><a href="#" class="nav-link"><span>AI Кеңесші</span><span>✦</span></a></li>
+          <li><a href="#" class="nav-link"><span>Пәндер</span><span>📖</span></a></li>
+        </ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="sidebar-btn">
+          <span>⚙ Мәзір / Баптаулар</span>
+          <span>[ESC]</span>
+        </button>
+        <div style="font-size: 10px; color: var(--text-muted); text-align: center; text-transform: uppercase;">
+          Aristos v0.2 • Офлайн PWA
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============================================================
+         MAIN CONTENT
+         ============================================================ -->
+    <main class="content">
+      <header class="main-header">
+        <div>
+          <span class="page-tag">Aristos · Студенттік кеңістік</span>
+          <h1 class="page-title">Оқу күніңізге шолу</h1>
+        </div>
+        <div class="semester-pill">
+          <span class="dot"></span>
+          <span>3-курс</span>
+          <span>/</span>
+          <span>1-семестр</span>
+        </div>
+      </header>
+
+      <div class="grid-container">
+        <!-- LEFT: Primary schedule and current status -->
+        <div class="schedule-col">
+          <!-- Status Banner -->
+          <div class="card status-card">
+            <div class="status-left">
+              <div class="status-icon">✓</div>
+              <div>
+                <div class="status-title">Бүгінгі сабақтар аяқталды</div>
+                <div class="status-desc">Бүгінгі сабақ кестесі толық аяқталды. Жұмысты жалғастыруға болады.</div>
+              </div>
+            </div>
+            <span style="font-size: 11px; color: var(--accent); font-weight: 700;">OK</span>
+          </div>
+
+          <!-- Week indicator -->
+          <div class="card" style="margin-bottom: 20px;">
+            <div class="week-header">
+              <div class="week-date">10 Қараша, Сейсенбі</div>
+              <div class="week-count">11 / 15 апта</div>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill"></div>
+            </div>
+          </div>
+
+          <!-- Day picker -->
+          <div class="days-picker">
+            <button class="day-btn">Дс</button>
+            <button class="day-btn active">Сс</button>
+            <button class="day-btn">Ср</button>
+            <button class="day-btn">Бс</button>
+            <button class="day-btn">Жм</button>
+            <button class="day-btn">Сн</button>
+            <button class="day-btn">Жс</button>
+          </div>
+
+          <!-- Timeline -->
+          <div class="timeline-title-row">
+            <div class="timeline-title">Апталық кесте</div>
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">6 сабақ тағайындалған</div>
+          </div>
+
+          <div class="schedule-list">
+            <!-- Item 1 -->
+            <div class="schedule-item">
+              <div class="time-badge">
+                09:00
+                <span class="time-end">09:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="type-tag">Практика</span>
+                  <span class="room-tag">📍 D310</span>
+                  <span class="teacher-tag">👤 Пирнепесов Ж.</span>
+                </div>
+                <div class="class-title">Бастауыш мектептің цифрлық сауаттылығы</div>
+              </div>
+            </div>
+
+            <!-- Item 2 -->
+            <div class="schedule-item">
+              <div class="time-badge">
+                10:00
+                <span class="time-end">10:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="type-tag">Практика</span>
+                  <span class="room-tag">📍 D310</span>
+                  <span class="teacher-tag">👤 Пирнепесов Ж.</span>
+                </div>
+                <div class="class-title">Бастауыш мектептің цифрлық сауаттылығы</div>
+              </div>
+            </div>
+
+            <!-- Item 3 -->
+            <div class="schedule-item">
+              <div class="time-badge">
+                13:00
+                <span class="time-end">13:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="type-tag">Практика</span>
+                  <span class="room-tag">📍 В115</span>
+                  <span class="teacher-tag">👤 Шарипова А.Б.</span>
+                </div>
+                <div class="class-title">Инклюзивті білім беру ортасы</div>
+              </div>
+            </div>
+
+            <!-- Item 4 -->
+            <div class="schedule-item">
+              <div class="time-badge">
+                14:00
+                <span class="time-end">14:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="type-tag">Практика</span>
+                  <span class="room-tag">📍 В115</span>
+                  <span class="teacher-tag">👤 Шарипова А.Б.</span>
+                </div>
+                <div class="class-title">Инклюзивті білім беру ортасы</div>
+              </div>
+            </div>
+
+            <!-- Item 5 -->
+            <div class="schedule-item">
+              <div class="time-badge">
+                16:00
+                <span class="time-end">16:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="type-tag">Практика</span>
+                  <span class="room-tag">📍 Е304</span>
+                  <span class="teacher-tag">👤 Конысов А.</span>
+                </div>
+                <div class="class-title">Құқық және сыбайлас жемқорлыққа қарсы саласындағы зерттеу дағдылары</div>
+                <div class="topic-box">
+                  <strong>Тақырып:</strong> Бизнес ортада сыбайлас жемқорлыққа қарсы сананы қалыптастыру.
+                </div>
+              </div>
+            </div>
+
+            <!-- Item 6 -->
+            <div class="schedule-item">
+              <div class="time-badge">
+                17:00
+                <span class="time-end">17:50</span>
+              </div>
+              <div>
+                <div class="class-meta">
+                  <span class="type-tag">Практика</span>
+                  <span class="room-tag">📍 Е304</span>
+                  <span class="teacher-tag">👤 Конысов А.</span>
+                </div>
+                <div class="class-title">Құқық және сыбайлас жемқорлыққа қарсы саласындағы зерттеу дағдылары</div>
+                <div class="topic-box">
+                  <strong>Тақырып:</strong> Бизнес ортада сыбайлас жемқорлыққа қарсы сананы қалыптастыру.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Secondary widgets & Stats -->
+        <div class="sidebar-widget-col">
+          <!-- Tomorrow's schedule -->
+          <div class="card">
+            <div class="widget-header">
+              <h3>Ертеңгі кесте · Сәрсенбі</h3>
+              <span>7 сабақ</span>
+            </div>
+            <div class="tomorrow-list">
+              <div class="tomorrow-item">
+                <span class="tomorrow-time">09:00</span>
+                <span style="flex:1;">Бұлтты және мобильдік техн.</span>
+                <span style="color:var(--text-muted);">D310</span>
+              </div>
+              <div class="tomorrow-item">
+                <span class="tomorrow-time">10:00</span>
+                <span style="flex:1;">Бұлтты және мобильдік техн.</span>
+                <span style="color:var(--text-muted);">D310</span>
+              </div>
+              <div class="tomorrow-item">
+                <span class="tomorrow-time">11:00</span>
+                <span style="flex:1;">Бастауыш цифрлық сауатт.</span>
+                <span style="color:var(--text-muted);">В302</span>
+              </div>
+              <div class="tomorrow-item">
+                <span class="tomorrow-time">13:00</span>
+                <span style="flex:1;">Мәліметтер қоры жүйелері</span>
+                <span style="color:var(--text-muted);">D305</span>
+              </div>
+              <div class="tomorrow-item">
+                <span class="tomorrow-time">14:00</span>
+                <span style="flex:1;">Мәліметтер қоры жүйелері</span>
+                <span style="color:var(--text-muted);">D305</span>
+              </div>
+              <div class="tomorrow-item">
+                <span class="tomorrow-time">15:00</span>
+                <span style="flex:1;">Құқық және жемқорлық зерттеу</span>
+                <span style="color:var(--text-muted);">Е308</span>
+              </div>
+              <div class="tomorrow-item">
+                <span class="tomorrow-time">16:00</span>
+                <span style="flex:1;">Құқық және жемқорлық зерттеу</span>
+                <span style="color:var(--text-muted);">Е205</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Deadlines -->
+          <div class="card">
+            <div class="widget-header">
+              <h3>Жақын мерзімдер</h3>
+              <a href="#">Барлығы →</a>
+            </div>
+            <div class="deadline-list">
+              <a href="https://canvas.yu.edu.kz/courses/1526/assignments/158966" target="_blank" class="deadline-item">
+                <span class="deadline-date">13 Қараша</span>
+                <span class="deadline-name">Тест №11</span>
+                <span class="deadline-sub">Құқық және жемқорлыққа қарсы мәдениет</span>
+              </a>
+              <a href="https://canvas.yu.edu.kz/courses/1324/assignments/32063" target="_blank" class="deadline-item">
+                <span class="deadline-date">14 Қараша</span>
+                <span class="deadline-name">Тест 11</span>
+                <span class="deadline-sub">Инклюзивная образовательная среда</span>
+              </a>
+              <a href="https://canvas.yu.edu.kz/courses/2127/assignments/32182" target="_blank" class="deadline-item">
+                <span class="deadline-date">16 Қараша</span>
+                <span class="deadline-name">ТЕСТ 12</span>
+                <span class="deadline-sub">Бұлтты және мобильдік технологиялар</span>
+              </a>
+              <a href="https://canvas.yu.edu.kz/courses/1526/assignments/167089" target="_blank" class="deadline-item">
+                <span class="deadline-date">18 Қараша</span>
+                <span class="deadline-name">БӨЖ №3</span>
+                <span class="deadline-sub">Құқық және жемқорлыққа қарсы мәдениет</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- GPA Card -->
+          <div class="card">
+            <div class="widget-header">
+              <h3>GPA Метрикасы</h3>
+              <a href="#">Калькулятор →</a>
+            </div>
+            <div class="gpa-grid">
+              <div class="gpa-card">
+                <div class="gpa-lbl">Ағымдағы GPA</div>
+                <div class="gpa-val">2.84</div>
+              </div>
+              <div class="gpa-card">
+                <div class="gpa-lbl">Болжам GPA</div>
+                <div class="gpa-val accent">2.84</div>
+              </div>
+            </div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 10px; text-transform: uppercase;">
+              144 кредит жүйе бойынша есептелді
+            </div>
+          </div>
+
+          <!-- Radar / Analytics -->
+          <div class="card">
+            <div class="widget-header">
+              <h3>Пәндер радары</h3>
+              <span style="font-size: 10px; color: var(--text-muted);">0 - 100 б.</span>
+            </div>
+            <div class="radar-box">
+              <svg viewBox="0 0 240 240" class="radar-svg">
+                <!-- Concentric Polygons -->
+                <polygon points="120,40 185,75 195,150 155,200 85,200 45,150 55,75" class="radar-grid"></polygon>
+                <polygon points="120,70 160,90 170,140 140,170 100,170 70,140 80,90" class="radar-grid"></polygon>
+                <!-- Data Polygon -->
+                <polygon points="120,50 175,85 180,145 150,195 90,190 55,145 70,80" class="radar-polygon"></polygon>
+                <!-- Labels -->
+                <text x="120" y="32" text-anchor="middle" class="radar-label">IOS</text>
+                <text x="195" y="75" text-anchor="start" class="radar-label">INOPAK</text>
+                <text x="205" y="155" text-anchor="start" class="radar-label">OMT</text>
+                <text x="155" y="215" text-anchor="middle" class="radar-label">OR</text>
+                <text x="85" y="215" text-anchor="middle" class="radar-label">RWP</text>
+                <text x="35" y="155" text-anchor="end" class="radar-label">SBD</text>
+                <text x="45" y="75" text-anchor="end" class="radar-label">CGNSH</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Advice Card -->
+          <div class="card">
+            <div class="widget-header">
+              <h3>AI Кеңесші түйіні</h3>
+              <span>✦</span>
+            </div>
+            <div style="font-size: 11px; line-height: 1.6; display: flex; flex-direction: column; gap: 6px;">
+              <div><strong>Жақын мерзім:</strong> «Тест №11» — 3 күн қалды</div>
+              <div><strong>Ең төмен балл:</strong> INOPAK 111252-1-L — 77.95%</div>
+              <div><strong>Рубежтік бақылау:</strong> РК 2 (2026-12-07 — 2026-12-12)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function setTheme(themeName, btn) {
+      document.documentElement.setAttribute('data-theme', themeName);
+      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>

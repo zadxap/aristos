@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Aristos Sync — дедлайны Canvas + журнал Платонуса",
+  "version": "1.1.0",
+  "description": "Синхронизация дедлайнов и оценок из canvas.yu.edu.kz и журнала оценок Платонуса (с оценками по дням) в студенческий дашборд Aristos. Работает под вашей сессией, токены не нужны.",
+  "permissions": ["cookies", "scripting", "storage"],
+  "host_permissions": ["https://canvas.yu.edu.kz/*", "https://platonus.yu.edu.kz/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Aristos Sync",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "192": "icons/icon-192.png",
+    "512": "icons/icon-512.png"
+  }
+}

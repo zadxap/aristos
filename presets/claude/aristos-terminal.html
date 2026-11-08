@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aristos — Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+:root{--bg:#050906;--fg:#a6ffb8;--dim:#4f9a63;--amb:#ffb62e;--line:#245a33}
+html{background:var(--bg)}
+body{margin:0;color:var(--fg);font:13px/1.55 "JetBrains Mono",monospace;text-shadow:0 0 6px rgba(93,255,138,.35)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px),
+  radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.65) 100%)}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;text-shadow:inherit}
+a{color:var(--amb);text-decoration:none}a:hover{text-decoration:underline}
+::selection{background:var(--fg);color:var(--bg)}
+
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.side{border-right:1px solid var(--line);padding:20px 18px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh}
+.logo pre{margin:0;color:var(--amb);line-height:1.05;font-size:11px;text-shadow:0 0 8px rgba(255,182,46,.5)}
+.logo b{display:block;font-size:20px;margin-top:8px}
+.logo small{color:var(--dim)}
+.menu{display:flex;flex-direction:column;gap:2px;flex:1}
+.menu a{color:var(--fg);padding:5px 8px;display:flex;gap:10px}
+.menu a i{font-style:normal;color:var(--dim)}
+.menu a:hover{background:rgba(166,255,184,.1);text-decoration:none}
+.menu a.on{background:var(--fg);color:var(--bg);text-shadow:none;font-weight:700}
+.menu a.on i{color:var(--bg)}
+.mz{border:1px solid var(--fg);padding:6px;width:100%}
+.mz:hover{background:var(--fg);color:var(--bg);text-shadow:none}
+.ver{color:var(--dim);font-size:11px;text-align:center;margin-top:8px}
+
+.top{display:flex;justify-content:space-between;padding:10px 28px;border-bottom:1px solid var(--line);color:var(--dim)}
+.chip{color:var(--amb);border:1px solid var(--amb);padding:0 10px}
+.main{padding:24px 28px 40px}
+.crumb{color:var(--dim)}
+h1{margin:6px 0 22px;font:700 34px/1.1 "JetBrains Mono"}
+h1::before{content:"> ";color:var(--amb)}
+h1::after{content:"█";margin-left:6px;animation:b 1s steps(1) infinite}
+@keyframes b{50%{opacity:0}}
+
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:30px 28px;align-items:start}
+.col{display:flex;flex-direction:column;gap:30px}
+.p{position:relative;border:1px solid var(--line);padding:20px 16px 14px}
+.p>.t{position:absolute;top:-10px;left:12px;background:var(--bg);padding:0 8px;color:var(--amb);font-weight:700;text-shadow:none}
+.p>.r{position:absolute;top:-10px;right:12px;background:var(--bg);padding:0 8px;color:var(--dim)}
+.p>.r a,.p>.r button{color:var(--amb)}
+
+.ok{display:flex;gap:14px;align-items:center}
+.ok .c{font-size:28px;color:var(--bg);background:var(--fg);width:44px;height:44px;display:grid;place-items:center;text-shadow:none;font-weight:700}
+.ok b{font-size:16px}.ok span{color:var(--dim);display:block}
+
+.wk{display:flex;justify-content:space-between;font-weight:700}
+.bar{font-size:18px;letter-spacing:1px;margin-top:6px;color:var(--fg)}
+.bar s{text-decoration:none;color:var(--line)}
+.bar em{font-style:normal;color:var(--amb)}
+
+.tabs{display:flex;flex-wrap:wrap;gap:8px}
+.tabs button{padding:3px 14px;border:1px solid var(--line);color:var(--dim)}
+.tabs button.on{background:var(--amb);border-color:var(--amb);color:var(--bg);text-shadow:none;font-weight:700}
+.tabs button:not(.on):hover{color:var(--fg);border-color:var(--fg)}
+
+.ls{padding:11px 0;border-bottom:1px dashed var(--line);display:grid;grid-template-columns:130px 1fr;gap:6px 14px}
+.ls:last-child{border:0}
+.ls time{color:var(--amb)}.ls time small{color:var(--dim);display:block}
+.ls .m{color:var(--dim)}.ls .m u{text-decoration:none;color:var(--fg);border:1px solid var(--dim);padding:0 6px;margin-right:8px}
+.ls h3{margin:2px 0 0;font-size:15px}
+.ls p{margin:4px 0 0;color:var(--dim)}.ls p b{color:var(--fg)}
+.tr{display:grid;grid-template-columns:60px 1fr auto;gap:10px;padding:3px 0}
+.tr time{color:var(--amb)}.tr em{font-style:normal;color:var(--dim)}
+
+.dl{display:grid;grid-template-columns:90px 1fr;padding:7px 0;border-bottom:1px dashed var(--line)}
+.dl:last-child{border:0}
+.dl .d{color:var(--amb);font-weight:700}
+.dl b{display:block}.dl span{color:var(--dim);font-size:11px}
+.tip p{margin:0 0 8px}.tip b{color:var(--amb)}
+svg{width:100%;display:block}
+.ring,.ax{fill:none;stroke:var(--line)}
+.area{fill:url(#dth);stroke:var(--fg);stroke-width:1.5;shape-rendering:crispEdges}
+svg text{font:10px "JetBrains Mono";fill:var(--dim);stroke:none;text-shadow:none}
+.cap{color:var(--dim);font-size:11px;margin:0 0 6px}
+.gp{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gp div{border:1px solid var(--line);padding:10px 12px}
+.gp small{color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:.06em}
+.gp b{display:block;font-size:44px;line-height:1.1}
+.gp div+div b{color:var(--amb);text-shadow:0 0 10px rgba(255,182,46,.5)}
+.note{color:var(--dim);margin:10px 0 0}
+
+@media(max-width:1100px){.cols{grid-template-columns:1fr}}
+@media(max-width:800px){.app{grid-template-columns:1fr}.side{position:static;height:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="logo">
+<pre>   /\
+  /  \
+ / /\ \
+/_/  \_\</pre>
+      <b>Aristos</b><small>Студенттік дашборд</small>
+    </div>
+    <nav class="menu">
+      <a class="on" href="#"><i>[1]</i>Басты бет</a>
+      <a href="#"><i>[2]</i>Күнтізбе</a>
+      <a href="#"><i>[3]</i>Мерзімдер</a>
+      <a href="#"><i>[4]</i>Бағалар</a>
+      <a href="#"><i>[5]</i>GPA</a>
+      <a href="#"><i>[6]</i>AI Кеңесші</a>
+      <a href="#"><i>[7]</i>Пәндер</a>
+    </nav>
+    <div><button class="mz">[ Мәзір ]</button><div class="ver">Aristos v0.2 • Офлайн PWA</div></div>
+  </aside>
+
+  <div>
+    <div class="top"><span>aristos@student:~$</span><span class="chip">3-к • 1-сем</span></div>
+    <div class="main">
+      <div class="crumb">Aristos · Студенттік кеңістік</div>
+      <h1>Оқу күніңізге шолу</h1>
+
+      <div class="cols">
+        <div class="col">
+          <div class="p"><span class="t">status</span>
+            <div class="ok"><div class="c">✓</div><div><b>Бүгінгі сабақтар аяқталды</b><span>Бүгінгі сабақ кестесі толық аяқталды.</span></div></div>
+          </div>
+
+          <div class="p"><span class="t">апта</span>
+            <div class="wk"><span>10 Қараша, Сейсенбі</span><span><em style="font-style:normal;color:var(--amb)">11</em> / 15 апта</span></div>
+            <div class="bar" id="bar"></div>
+          </div>
+
+          <div class="p"><span class="t">күн</span>
+            <div class="tabs" id="tabs"></div>
+          </div>
+
+          <div class="p"><span class="t">Апталық кесте</span><span class="r">6 сабақ</span>
+            <div id="sch"></div>
+          </div>
+
+          <div class="p"><span class="t">Ертеңгі кесте</span><span class="r">Сәрсенбі</span>
+            <div id="tmr"></div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="p"><span class="t">Жақын мерзімдер</span><span class="r"><a href="#">Барлығы →</a></span>
+            <div id="dl"></div>
+          </div>
+
+          <div class="p tip"><span class="t">Апталық кеңес</span><span class="r"><button title="Жаңарту">[⟳]</button></span>
+            <p><b>Жақын мерзім:</b> «Тест №11» — 3 күн</p>
+            <p><b>Ең төмен курс:</b> INOPAK 111252-1-L — 77.95%</p>
+            <p><b>Рубежтік бақылау:</b> Рубеждік бақылау 2 — 2026-12-07 … 2026-12-12</p>
+            <a href="#">AI Кеңесші →</a>
+          </div>
+
+          <div class="p"><span class="t">Пәндер радары</span>
+            <p class="cap">Canvas курстарының ағымдағы балы, 0–100</p>
+            <svg viewBox="0 0 400 300">
+              <defs><pattern id="dth" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="#a6ffb8"/><rect x="2" y="2" width="2" height="2" fill="#a6ffb8"/></pattern></defs>
+              <g id="radar"></g>
+            </svg>
+          </div>
+
+          <div class="p"><span class="t">GPA</span><span class="r"><a href="#">Калькулятор →</a></span>
+            <div class="gp"><div><small>Ағымдағы GPA</small><b>2.84</b></div><div><small>GPA болжамы</small><b>2.84</b></div></div>
+            <p class="note">144 кредит есепке алынды</p>
+          </div>
+
+          <div class="p"><span class="t">Жазбалар</span>
+            <a href="https://aristoss.vercel.app">https://aristoss.vercel.app</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const L3="Құқық және сыбайлас жемқорлыққа қарсы саласындағы зерттеу дағдылары",TP="Бизнес ортада сыбайлас жемқорлыққа қарсы сананы қалыптастыру.";
+const S=[["09:00","09:50","D310","Пирнепесов Ж.","Бастауыш мектептің цифрлық сауаттылығы"],["10:00","10:50","D310","Пирнепесов Ж.","Бастауыш мектептің цифрлық сауаттылығы"],["13:00","13:50","B115","Шарипова А.Б.","Инклюзивті білім беру ортасы"],["14:00","14:50","B115","Шарипова А.Б.","Инклюзивті білім беру ортасы"],["16:00","16:50","E304","Конысов А.",L3,TP],["17:00","17:50","E304","Конысов А.",L3,TP]];
+const T=[["09:00","Бұлтты және мобильдік технологиялар","D310"],["10:00","Бұлтты және мобильдік технологиялар","D310"],["11:00","Бастауыш мектептің цифрлық сауаттылығы","B302"],["13:00","Мәліметтер қорының жүйелері","D305"],["14:00","Мәліметтер қорының жүйелері","D305"],["15:00",L3,"E308"],["16:00",L3,"E205"]];
+const D=[["13 Қараша","Тест №11","Құқық және жемқорлыққа қарсы мәдениет негізд…"],["14 Қараша","Тест 11","Инклюзивная образовательная среда (IOS 112142-1…"],["16 Қараша","ТЕСТ 12","Бұлтты және мобильдік технологиялар"],["18 Қараша","БӨЖ №3","Құқық және жемқорлыққа қарсы мәдениет негізд…"]];
+const R=[["IOS 112142-1-L",92],["INOPAK 111252…",77.95],["OMT 113242-1-L",98],["OR 112142-3-L",95],["RWP 113252-1-L",96],["SBD 113242-1-L",99],["CGNSH 113242-…",88]];
+
+bar.innerHTML="["+"<em>██</em>".repeat(0)+"██".repeat(11)+"<s>"+"░░".repeat(4)+"</s>]";
+tabs.innerHTML=["Дс","Сс","Ср","Бс","Жм","Сн","Жс"].map((d,i)=>`<button class="${i==1?'on':''}">${d}</button>`).join("");
+tabs.onclick=e=>{if(e.target.tagName=="BUTTON"){[...tabs.children].forEach(b=>b.classList.remove("on"));e.target.classList.add("on")}};
+sch.innerHTML=S.map(s=>`<div class="ls"><time>${s[0]}<small>→ ${s[1]}</small></time><div><div class="m"><u>Практика</u>⌖ ${s[2]} · ${s[3]}</div><h3>${s[4]}</h3>${s[5]?`<p><b>Тақырып:</b> ${s[5]}</p>`:""}</div></div>`).join("");
+tmr.innerHTML=T.map(t=>`<div class="tr"><time>${t[0]}</time><span>${t[1]}</span><em>${t[2]}</em></div>`).join("");
+dl.innerHTML=D.map(d=>`<div class="dl"><div class="d">${d[0]}</div><div><b>${d[1]}</b><span>${d[2]}</span></div></div>`).join("");
+
+function radar(el,o){const n=R.length,{cx,cy,r}=o;
+ const ang=i=>-Math.PI/2+i*2*Math.PI/n, pt=(i,k)=>[cx+Math.cos(ang(i))*r*k,cy+Math.sin(ang(i))*r*k];
+ const poly=k=>R.map((_,i)=>pt(i,k).join(",")).join(" ");
+ let s=[.25,.5,.75,1].map(k=>`<polygon class="ring" points="${poly(k)}"/>`).join("");
+ s+=R.map((_,i)=>{const p=pt(i,1);return `<line class="ax" x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}"/>`}).join("");
+ s+=`<polygon class="area" points="${R.map((d,i)=>pt(i,d[1]/100).join(",")).join(" ")}"/>`;
+ s+=R.map((d,i)=>{const [x,y]=pt(i,1.13),c=Math.cos(ang(i));return `<text x="${x}" y="${y}" text-anchor="${c>.25?'start':c<-.25?'end':'middle'}" dy=".35em">${d[0]}</text>`}).join("");
+ el.innerHTML=s}
+radar(document.getElementById("radar"),{cx:200,cy:150,r:92});
+</script>
+</body>
+</html>

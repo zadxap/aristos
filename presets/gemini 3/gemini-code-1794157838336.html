@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aristos — Студенттік дашборд (Terminal)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0c0d10;
+            --card: #14161b;
+            --border: #262933;
+            --fg: #e1e4ed;
+            --muted: #8b90a0;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --font: 'Share Tech Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0 !important; }
+        body { background-color: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; letter-spacing: 0.02em; }
+
+        .app-grid { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+        
+        /* Terminal Sidebar */
+        aside {
+            background: var(--card);
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .logo { font-size: 20px; font-weight: bold; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        .logo span { color: var(--muted); font-size: 11px; display: block; }
+        
+        .menu { display: flex; flex-direction: column; gap: 4px; margin-top: 24px; }
+        .menu a {
+            color: var(--muted);
+            text-decoration: none;
+            padding: 8px 12px;
+            border: 1px solid transparent;
+            font-size: 13px;
+        }
+        .menu a:hover, .menu a.active {
+            color: var(--fg);
+            border-color: var(--border);
+            background: rgba(255,255,255,0.02);
+        }
+        .menu a.active { color: var(--accent); border-color: var(--accent); background: var(--accent-glow); }
+
+        /* Main Area */
+        main { padding: 32px 40px; overflow-y: auto; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px; }
+        header h1 { font-size: 24px; color: var(--fg); text-transform: uppercase; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+        .stack { display: flex; flex-direction: column; gap: 20px; }
+
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 20px;
+        }
+        .panel h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; border-bottom: 1px dashed var(--border); padding-bottom: 8px; }
+
+        /* Status & Progress */
+        .status-bar {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid #10b981;
+            color: #10b981;
+            padding: 12px 16px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .progress-box { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+        .progress-line { height: 4px; background: var(--border); width: 100%; }
+        .progress-val { height: 100%; background: var(--accent); width: 73%; }
+
+        /* Days navigation */
+        .days-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 16px; }
+        .d-btn { background: var(--bg); border: 1px solid var(--border); color: var(--muted); padding: 8px; text-align: center; cursor: pointer; font-family: var(--font); }
+        .d-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: bold; }
+
+        /* Schedule item */
+        .sched-row {
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 16px;
+            background: rgba(255,255,255,0.01);
+        }
+        .sched-time { color: var(--accent); font-weight: bold; }
+        .sched-time span { display: block; font-size: 11px; color: var(--muted); }
+        .sched-title { font-size: 14px; font-weight: bold; margin-bottom: 4px; }
+        .sched-meta { font-size: 11px; color: var(--muted); display: flex; gap: 16px; }
+
+        /* Deadlines list */
+        .dl-item { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .dl-item:last-child { border-bottom: none; }
+        .dl-top { display: flex; justify-content: space-between; color: var(--accent); }
+        .dl-sub { font-size: 11px; color: var(--muted); }
+
+        .gpa-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center; }
+        .gpa-card { border: 1px solid var(--border); padding: 12px; background: var(--bg); }
+        .gpa-card span { font-size: 10px; color: var(--muted); display: block; text-transform: uppercase; }
+        .gpa-card b { font-size: 18px; color: var(--fg); display: block; margin-top: 4px; }
+
+        @media (max-width: 1024px) {
+            .app-grid { grid-template-columns: 1fr; }
+            aside { display: none; }
+            main { padding: 16px; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-grid">
+    <aside>
+        <div>
+            <div class="logo">ARISTOS<span>// student_os v0.2</span></div>
+            <div class="menu">
+                <a href="#" class="active">> Басты бет</a>
+                <a href="#">:: Күнтізбе</a>
+                <a href="#">:: Мерзімдер</a>
+                <a href="#">:: Бағалар</a>
+                <a href="#">:: GPA</a>
+                <a href="#">:: AI Кеңесші</a>
+                <a href="#">:: Пәндер</a>
+            </div>
+        </div>
+        <div style="font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); pt: 12px;">
+            Yessenov Univ • ИНФ-24-1
+        </div>
+    </aside>
+
+    <main>
+        <header>
+            <h1>Оқу күніне шолу</h1>
+            <span style="font-size: 12px; color: var(--muted); border: 1px solid var(--border); padding: 4px 8px;">[ 3-КҮРС • 1-СЕМЕСТР ]</span>
+        </header>
+
+        <div class="dashboard-grid">
+            <div class="stack">
+                <div class="status-bar">
+                    <span>[OK] БҮГІНГІ САБАҚТАР АЯҚТАЛДЫ</span>
+                </div>
+
+                <div class="panel">
+                    <div class="progress-box">
+                        <span style="font-weight: bold;">10 Қараша, Сейсенбі</span>
+                        <span style="color: var(--accent);">АПТА: 11 / 15</span>
+                    </div>
+                    <div class="progress-line">
+                        <div class="progress-val"></div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Күн кестесі</h3>
+                    <div class="days-row">
+                        <button class="d-btn">ДС</button>
+                        <button class="d-btn active">СС</button>
+                        <button class="d-btn">СР</button>
+                        <button class="d-btn">БС</button>
+                        <button class="d-btn">ЖМ</button>
+                        <button class="d-btn">СН</button>
+                        <button class="d-btn">ЖС</button>
+                    </div>
+
+                    <div>
+                        <div class="sched-row">
+                            <div class="sched-time">09:00<span>09:50</span></div>
+                            <div>
+                                <div class="sched-title">Бастауыш мектептің цифрлық сауаттылығы</div>
+                                <div class="sched-meta"><span>[D310]</span><span>Пирнепесов Ж.</span><span>Практика</span></div>
+                            </div>
+                        </div>
+                        <div class="sched-row">
+                            <div class="sched-time">10:00<span>10:50</span></div>
+                            <div>
+                                <div class="sched-title">Бастауыш мектептің цифрлық сауаттылығы</div>
+                                <div class="sched-meta"><span>[D310]</span><span>Пирнепесов Ж.</span><span>Практика</span></div>
+                            </div>
+                        </div>
+                        <div class="sched-row">
+                            <div class="sched-time">13:00<span>13:50</span></div>
+                            <div>
+                                <div class="sched-title">Инклюзивті білім беру ортасы</div>
+                                <div class="sched-meta"><span>[В115]</span><span>Шарипова А.Б.</span><span>Практика</span></div>
+                            </div>
+                        </div>
+                        <div class="sched-row">
+                            <div class="sched-time">14:00<span>14:50</span></div>
+                            <div>
+                                <div class="sched-title">Инклюзивті білім беру ортасы</div>
+                                <div class="sched-meta"><span>[В115]</span><span>Шарипова А.Б.</span><span>Практика</span></div>
+                            </div>
+                        </div>
+                        <div class="sched-row">
+                            <div class="sched-time">16:00<span>16:50</span></div>
+                            <div>
+                                <div class="sched-title">Құқық және сыбайлас жемқорлыққа қарсы саласындағы зерттеу дағдылары</div>
+                                <div class="sched-meta"><span>[Е304]</span><span>Конысов А.</span><span>Практика</span></div>
+                                <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">Тақырып: Бизнес ортада сыбайлас жемқорлыққа қарсы сананы қалыптастыру.</div>
+                            </div>
+                        </div>
+                        <div class="sched-row">
+                            <div class="sched-time">17:00<span>17:50</span></div>
+                            <div>
+                                <div class="sched-title">Құқық және сыбайлас жемқорлыққа қарсы саласындағы зерттеу дағдылары</div>
+                                <div class="sched-meta"><span>[Е304]</span><span>Конысов А.</span><span>Практика</span></div>
+                                <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">Тақырып: Бизнес ортада сыбайлас жемқорлыққа қарсы сананы қалыптастыру.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stack">
+                <div class="panel">
+                    <h3>Жақын мерзімдер</h3>
+                    <div class="dl-item">
+                        <div class="dl-top"><span>13 Қараша</span><span>Тест №11</span></div>
+                        <div class="dl-sub">Құқық және жемқорлыққа қарсы мәдениет</div>
+                    </div>
+                    <div class="dl-item">
+                        <div class="dl-top"><span>14 Қараша</span><span>Тест 11</span></div>
+                        <div class="dl-sub">Инклюзивная образовательная среда</div>
+                    </div>
+                    <div class="dl-item">
+                        <div class="dl-top"><span>16 Қараша</span><span>ТЕСТ 12</span></div>
+                        <div class="dl-sub">Бұлтты және мобильдік технологиялар</div>
+                    </div>
+                    <div class="dl-item">
+                        <div class="dl-top"><span>18 Қараша</span><span>БӨЖ №3</span></div>
+                        <div class="dl-sub">Құқық және жемқорлыққа қарсы мәдениет</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>AI кеңесші & Метрика</h3>
+                    <div style="font-size: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; color: var(--muted);">
+                        <div>> Жақын мерзім: <b style="color:var(--fg);">Тест №11 (3 күн)</b></div>
+                        <div>> Төмен курс: <b style="color:var(--fg);">INOPAK (77.95%)</b></div>
+                        <div>> Рубеж: <b style="color:var(--fg);">07.12 - 12.12</b></div>
+                    </div>
+                    <div class="gpa-boxes">
+                        <div class="gpa-card">
+                            <span>GPA Ағымдағы</span>
+                            <b>2.84</b>
+                        </div>
+                        <div class="gpa-card">
+                            <span>GPA Болжам</span>
+                            <b style="color: var(--accent);">2.84</b>
+                        </div>
+                    </div>
+                    <div style="font-size: 10px; color: var(--muted); text-align: center; margin-top: 8px;">144 кредит есепке алынды</div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+</body>
+</html>

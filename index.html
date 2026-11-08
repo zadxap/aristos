@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="kk">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // Boot diagnostics: capture module-chain failures before main.tsx runs
+      window.__BOOT_ERRORS = [];
+
+      // «Старый чанк» после деплоя: открытая страница (или кэш PWA) ссылается на
+      // хэшированные ассеты, которых на сервере уже нет — lazy-импорт падает.
+      // Один раз перезагружаемся за свежим index.html; защита от цикла — метка
+      // в sessionStorage, офлайн-режим не трогаем.
+      window.__reloadOnStaleChunk = function (msg) {
+        try {
+          if (!/dynamically imported module|Importing a module script failed|Loading chunk \d+ failed|preloadError/i.test(String(msg))) return false;
+          if (navigator.onLine === false) return false;
+          var key = "aristos-chunk-reload";
+          var last = Number(sessionStorage.getItem(key) || 0);
+          if (Date.now() - last < 10000) return false;
+          sessionStorage.setItem(key, String(Date.now()));
+          location.replace(location.href);
+          return true;
+        } catch (err) {
+          return false;
+        }
+      };
+
+      window.addEventListener("error", function (e) {
+        if (window.__reloadOnStaleChunk(e.message)) return;
+        var target = e.target && e.target !== window ? (e.target.tagName + " " + (e.target.src || e.target.href || "")) : "";
+        window.__BOOT_ERRORS.push((e.message || "resource error") + (target ? " [" + target + "]" : "") + (e.filename ? " @ " + e.filename.split("/").pop() + ":" + e.lineno : ""));
+        var root = document.getElementById("root");
+        if (root && root.children.length === 0) root.textContent = "BOOT ERROR: " + window.__BOOT_ERRORS.join(" | ");
+      }, true);
+      window.addEventListener("unhandledrejection", function (e) {
+        var reasonMsg = String((e.reason && (e.reason.stack || e.reason.message)) || e.reason);
+        if (window.__reloadOnStaleChunk(reasonMsg)) return;
+        window.__BOOT_ERRORS.push("rejection: " + reasonMsg.slice(0, 300));
+        var root = document.getElementById("root");
+        if (root && root.children.length === 0) root.textContent = "BOOT ERROR: " + window.__BOOT_ERRORS.join(" | ");
+      });
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#080a0e" />
+    <meta name="description" content="Aristos — Студенттік дербес дашборд (PWA)" />
+    <title>Aristos — Студенттік дашборд</title>
+  </head>
+  <body class="bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

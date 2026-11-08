@@ -1,0 +1,11 @@
+{
+  "name": "aristos-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:platonus": "node test-platonus-parser.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^31.0.0"
+  }
+}

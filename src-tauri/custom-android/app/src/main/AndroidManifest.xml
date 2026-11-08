@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Оверлей поверх tauri android init (копируется в gen/android в CI).
+     База — шаблон tauri-cli; добавлены: POST_NOTIFICATIONS,
+     SCHEDULE_EXACT_ALARM, VIBRATE и три ресивера-виджета (.widgets.*). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
+
+    <application
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.aristos"
+        android:usesCleartextTraffic="${usesCleartextTraffic}"
+        android:hardwareAccelerated="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+            android:theme="@style/Theme.aristos"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".widgets.NextPairsWidgetProvider"
+            android:exported="false"
+            android:label="Aristos — Next lessons">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_next_pairs_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.WeekScheduleWidgetProvider"
+            android:exported="false"
+            android:label="Aristos — Week schedule">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_week_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.DeadlinesWidgetProvider"
+            android:exported="false"
+            android:label="Aristos — Deadlines">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_deadlines_info" />
+        </receiver>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

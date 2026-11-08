@@ -1,0 +1,35 @@
+{
+  "course": 2,
+  "semester": 1,
+  "schedule": [
+    {"day": "mon", "start": "13:00", "end": "13:50", "subject_id": "obyekti-bagdarlangan-programmalau", "subject_name": "Объектлі-бағдарланған программалау", "type": "lecture", "room": "B410", "teacher": "Абдыкеримова Э.А."},
+    {"day": "mon", "start": "14:00", "end": "14:50", "subject_id": "bilim-berudegi-psihologiya", "subject_name": "Білім берудегі психология, өзара әрекеттесу және байланыс", "type": "practice", "room": "D407", "teacher": "Жарылғасова П.Е."},
+    {"day": "mon", "start": "15:00", "end": "15:50", "subject_id": "bilim-berudegi-psihologiya", "subject_name": "Білім берудегі психология, өзара әрекеттесу және байланыс", "type": "practice", "room": "D407", "teacher": "Жарылғасова П.Е."},
+    {"day": "mon", "start": "16:00", "end": "16:50", "subject_id": "bilim-berudegi-psihologiya", "subject_name": "Білім берудегі психология, өзара әрекеттесу және байланыс", "type": "practice", "room": "B305", "teacher": "Жарылғасова П.Е."},
+    {"day": "mon", "start": "17:00", "end": "17:50", "subject_id": "bilim-berudegi-psihologiya", "subject_name": "Білім берудегі психология, өзара әрекеттесу және байланыс", "type": "practice", "room": "B305", "teacher": "Жарылғасова П.Е."},
+
+    {"day": "tue", "start": "09:00", "end": "09:50", "subject_id": "psihologiya", "subject_name": "Психология", "type": "practice", "room": "B308", "teacher": "Кабекенова А."},
+    {"day": "tue", "start": "10:00", "end": "10:50", "subject_id": "filosofiya", "subject_name": "Философия", "type": "practice", "room": "B403", "teacher": "Мүсіров М.Ғ."},
+    {"day": "tue", "start": "11:00", "end": "11:50", "subject_id": "filosofiya", "subject_name": "Философия", "type": "practice", "room": "B403", "teacher": "Мүсіров М.Ғ."},
+    {"day": "tue", "start": "13:00", "end": "13:50", "subject_id": "psihologiya", "subject_name": "Психология", "type": "practice", "room": "БО001", "teacher": "Кабекенова А."},
+    {"day": "tue", "start": "14:00", "end": "14:50", "subject_id": "diskretti-matematika", "subject_name": "Дискретті математика", "type": "lecture", "room": "B309", "teacher": "Нигметова Г.Н."},
+
+    {"day": "wed", "start": "12:00", "end": "12:50", "subject_id": "obyekti-bagdarlangan-programmalau", "subject_name": "Объектлі-бағдарланған программалау", "type": "practice", "room": "D", "teacher": "Урбисинова Г.У."},
+    {"day": "wed", "start": "13:00", "end": "13:50", "subject_id": "obyekti-bagdarlangan-programmalau", "subject_name": "Объектлі-бағдарланған программалау", "type": "practice", "room": "D", "teacher": "Урбисинова Г.У."},
+    {"day": "wed", "start": "14:00", "end": "14:50", "subject_id": "bilim-beru-teoriyalary", "subject_name": "Білім беру туралы ғылым және оқытудың негізгі теориялары", "type": "lecture", "room": "K502", "teacher": "Жанғозиева М."},
+    {"day": "wed", "start": "15:00", "end": "15:50", "subject_id": "bilim-berudegi-psihologiya", "subject_name": "Білім берудегі психология, өзара әрекеттесу және байланыс", "type": "lecture", "room": "K502", "teacher": "Жарылғасова П."},
+    {"day": "wed", "start": "16:00", "end": "16:50", "subject_id": "diskretti-matematika", "subject_name": "Дискретті математика", "type": "practice", "room": "B308", "teacher": "Нигметова Г.Н."},
+    {"day": "wed", "start": "17:00", "end": "17:50", "subject_id": "diskretti-matematika", "subject_name": "Дискретті математика", "type": "practice", "room": "B308", "teacher": "Нигметова Г.Н."},
+
+    {"day": "thu", "start": "09:00", "end": "17:50", "subject_id": "askeri-isi", "subject_name": "Әскері ісі", "type": null, "room": null, "teacher": null},
+
+    {"day": "fri", "start": "09:00", "end": "09:50", "subject_id": "bilim-beru-teoriyalary", "subject_name": "Білім беру туралы ғылым және оқытудың негізгі теориялары", "type": "practice", "room": "D407", "teacher": "Жангозиева М."},
+    {"day": "fri", "start": "10:00", "end": "10:50", "subject_id": "bilim-beru-teoriyalary", "subject_name": "Білім беру туралы ғылым және оқытудың негізгі теориялары", "type": "practice", "room": "D407", "teacher": "Жангозиева М."},
+    {"day": "fri", "start": "11:00", "end": "11:50", "subject_id": "filosofiya", "subject_name": "Философия", "type": "practice", "room": "D010", "teacher": "Мүсіров М.Ғ."},
+    {"day": "fri", "start": "12:00", "end": "12:50", "subject_id": "filosofiya", "subject_name": "Философия", "type": "practice", "room": "D010", "teacher": "Мүсіров М.Ғ."},
+    {"day": "fri", "start": "13:00", "end": "13:50", "subject_id": "aleumettanu", "subject_name": "Әлеуметтану", "type": "practice", "room": "D202", "teacher": "Дуйсенова С.М."},
+    {"day": "fri", "start": "14:00", "end": "14:50", "subject_id": "aleumettanu", "subject_name": "Әлеуметтану", "type": "practice", "room": "B002", "teacher": "Дуйсенова С.М."},
+    {"day": "fri", "start": "16:00", "end": "16:50", "subject_id": "bilim-beru-teoriyalary", "subject_name": "Білім беру туралы ғылым және оқытудың негізгі теориялары", "type": "practice", "room": "B409", "teacher": "Жангозиева М."},
+    {"day": "fri", "start": "17:00", "end": "17:50", "subject_id": "bilim-beru-teoriyalary", "subject_name": "Білім беру туралы ғылым және оқытудың негізгі теориялары", "type": "practice", "room": "B409", "teacher": "Жангозиева М."}
+  ]
+}

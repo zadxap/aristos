@@ -1,0 +1,13 @@
+name = "aristos-sync"
+main = "src/worker.js"
+compatibility_date = "2026-11-04"
+
+# Замени на реальный id после `npx wrangler kv namespace create SYNC_KV`
+[[kv_namespaces]]
+binding = "SYNC_KV"
+id = "5bd447c5eef34c89b7d8a5ce5cb20ff0"
+
+[vars]
+# "*" — доступ с любого сайта (для разработки). Иначе — список доменов через запятую.
+# tauri.localhost — WebView-обёртка Tauri (Android/Windows: http://, iOS/macOS/Linux: tauri://).
+ALLOWED_ORIGIN = "https://aristoss.vercel.app,https://aristos-lovat.vercel.app,http://localhost:5174,http://localhost:5173,http://tauri.localhost,tauri://localhost"

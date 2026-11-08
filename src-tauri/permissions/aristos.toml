@@ -1,0 +1,10 @@
+# ACL для собственных команд приложения (приложение, не плагин).
+# Ссылаться из capabilities как "aristos:default".
+[default]
+description = "Разрешает собственные команды Aristos"
+permissions = ["allow-write-widget-data"]
+
+[[permission]]
+identifier = "allow-write-widget-data"
+description = "Записывает JSON-снапшот для Android-виджетов в app-каталог"
+commands.allow = ["write_widget_data"]

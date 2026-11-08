@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aristos — Poster</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+:root{--paper:#e8e5da;--ink:#141414;--hot:#ff4b1f;--mute:#77756b;--line:2px solid var(--ink)}
+body{margin:0;color:var(--ink);font:13px/1.45 "JetBrains Mono",monospace;
+  background:var(--paper) radial-gradient(rgba(0,0,0,.09) 1px,transparent 1.3px) 0 0/6px 6px}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+a{color:inherit}
+
+/* top bar */
+.bar{display:flex;align-items:stretch;border-bottom:var(--line);background:var(--paper);position:sticky;top:0;z-index:5}
+.brand{display:flex;align-items:center;gap:12px;padding:12px 24px;background:var(--ink);color:var(--paper)}
+.brand b{font:900 26px "Roboto Condensed";text-transform:uppercase;letter-spacing:.02em;line-height:1}
+.brand small{display:block;font-size:10px;opacity:.7;margin-top:2px}
+nav{display:flex;flex:1;overflow-x:auto}
+nav a{display:flex;align-items:center;gap:8px;padding:0 18px;text-decoration:none;border-right:1px solid var(--ink);font-weight:700;white-space:nowrap}
+nav a i{font-style:normal;font-weight:400;color:var(--mute);font-size:11px}
+nav a.on{background:var(--hot)}
+nav a.on i{color:var(--ink)}
+nav a:hover:not(.on){background:var(--ink);color:var(--paper)}
+.chip{align-self:center;margin:0 24px;border:var(--line);padding:4px 10px;font-weight:700;white-space:nowrap}
+
+/* hero */
+.hero{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;padding:30px 28px 24px;border-bottom:3px solid var(--ink);flex-wrap:wrap}
+.crumb{margin:0 0 10px;color:var(--hot);font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-size:12px}
+h1{margin:0;font:900 clamp(44px,7.4vw,112px)/.88 "Roboto Condensed";text-transform:uppercase}
+h1 em{font-style:normal;color:var(--hot)}
+.stamp{display:flex;align-items:stretch;border:var(--line);background:var(--paper);max-width:360px}
+.stamp .ck{width:54px;display:grid;place-items:center;font-size:26px;font-weight:700;
+  background:radial-gradient(var(--ink) 1.2px,transparent 1.6px) 0 0/5px 5px,var(--hot);border-right:var(--line)}
+.stamp div{padding:10px 14px}
+.stamp b{display:block;font:800 18px "Roboto Condensed";text-transform:uppercase}
+.stamp span{font-size:11px;color:var(--mute)}
+
+/* layout */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 420px}
+.left{border-right:var(--line)}
+section{border-bottom:var(--line);padding:22px 28px}
+.h{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.h b{font:900 22px "Roboto Condensed";letter-spacing:.02em}
+.h a,.h button{color:var(--hot);font-weight:700;text-decoration:none}
+.h a:hover,.h button:hover{text-decoration:underline}
+
+/* week */
+.wk{display:flex;justify-content:space-between;align-items:baseline}
+.wk .d{font:900 40px/1 "Roboto Condensed";text-transform:uppercase}
+.wk .n{font-weight:700}.wk .n b{font:900 28px "Roboto Condensed";color:var(--hot)}
+.seg{display:grid;grid-template-columns:repeat(15,1fr);gap:3px;margin-top:14px}
+.seg i{height:18px;border:1.5px solid var(--ink)}
+.seg i.f{background:var(--ink)}
+.seg i.c{background:var(--hot);border-color:var(--ink)}
+
+/* tabs */
+.tabs{display:grid;grid-template-columns:repeat(7,1fr);border:var(--line)}
+.tabs button{padding:12px 0;font-weight:700;border-right:1px solid var(--ink);position:relative}
+.tabs button:last-child{border:0}
+.tabs button.on{background:var(--ink);color:var(--paper)}
+.tabs button.on::after{content:"";position:absolute;left:50%;bottom:5px;width:6px;height:6px;margin-left:-3px;background:var(--hot);border-radius:50%}
+.tabs button:not(.on):hover{background:rgba(255,75,31,.25)}
+
+/* schedule */
+.sch{padding:0}
+.sch .h{padding:22px 28px 0}
+.row{display:grid;grid-template-columns:120px 1fr;border-top:1px solid var(--ink);padding:16px 28px}
+.row:first-of-type{border-top:var(--line)}
+.row time{font:900 34px/1 "Roboto Condensed"}
+.row time small{display:block;font:400 12px "JetBrains Mono";color:var(--mute);margin-top:4px}
+.meta{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-bottom:6px;align-items:center}
+.tag{background:var(--hot);padding:1px 8px;font-weight:700;text-transform:uppercase;font-size:11px;border:1.5px solid var(--ink)}
+.row h3{margin:0;font:800 clamp(18px,2vw,26px)/1.05 "Roboto Condensed";text-transform:uppercase}
+.row p{margin:8px 0 0;color:var(--mute)}.row p b{color:var(--ink)}
+
+/* tomorrow */
+.tm{display:flex;align-items:baseline;gap:12px;padding:7px 0}
+.tm time{background:var(--ink);color:var(--paper);padding:1px 8px;font-weight:700}
+.tm span{white-space:nowrap}
+.tm hr{flex:1;border:0;border-bottom:2px dotted var(--ink);margin:0;opacity:.5;transform:translateY(-3px)}
+.tm em{font-style:normal;font-weight:700}
+
+/* deadlines */
+.dl{display:grid;grid-template-columns:62px 1fr;gap:14px;padding:12px 0;border-top:1px solid var(--ink)}
+.dl:first-of-type{border-top:0}
+.dl .dt{text-align:center;border:var(--line);line-height:1;padding:6px 0}
+.dl .dt b{display:block;font:900 30px "Roboto Condensed"}
+.dl .dt small{font-size:10px;text-transform:uppercase;color:var(--hot);font-weight:700}
+.dl h4{margin:0;font:800 19px "Roboto Condensed";text-transform:uppercase}
+.dl p{margin:2px 0 0;font-size:11px;color:var(--mute)}
+
+/* tips */
+.tips p{margin:0 0 10px}.tips b{text-transform:uppercase;font-size:11px;letter-spacing:.05em;display:block;color:var(--mute)}
+.btn{display:block;width:100%;padding:11px;background:var(--ink);color:var(--paper);font-weight:700;text-align:center;text-decoration:none;margin-top:6px}
+.btn:hover{background:var(--hot);color:var(--ink)}
+.rf{border:var(--line);padding:2px 8px;color:var(--ink)!important}
+
+/* radar */
+svg{width:100%;display:block}
+.ring{fill:none;stroke:var(--ink);stroke-opacity:.3}
+.ax{stroke:var(--ink);stroke-opacity:.3}
+.area{fill:var(--hot);fill-opacity:.8;stroke:var(--ink);stroke-width:2;mix-blend-mode:multiply}
+svg text{font:10.5px "JetBrains Mono";fill:var(--ink)}
+.cap{font-size:11px;color:var(--mute);margin:0 0 8px}
+
+/* gpa */
+.gp{display:grid;grid-template-columns:1fr 1fr;border:var(--line)}
+.gp div{padding:12px 14px}
+.gp div+div{background:var(--hot);border-left:var(--line)}
+.gp small{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.gp b{display:block;font:900 64px/1 "Roboto Condensed"}
+.note{margin:10px 0 0;color:var(--mute)}
+
+footer{display:flex;justify-content:space-between;align-items:center;padding:16px 28px;border-top:3px solid var(--ink);background:var(--ink);color:var(--paper)}
+footer button{border:1.5px solid var(--paper);padding:6px 16px;font-weight:700}
+footer button:hover{background:var(--hot);color:var(--ink);border-color:var(--hot)}
+
+@media(max-width:1000px){.cols{grid-template-columns:1fr}.left{border-right:0}.row{grid-template-columns:90px 1fr}}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand">
+    <svg width="30" height="30" viewBox="0 0 30 30" style="width:30px"><polygon points="15,2 28,27 2,27" fill="#ff4b1f"/><polygon points="15,12 20,22 10,22" fill="#141414"/></svg>
+    <div><b>Aristos</b><small>Студенттік дашборд</small></div>
+  </div>
+  <nav>
+    <a class="on" href="#"><i>01</i>Басты бет</a>
+    <a href="#"><i>02</i>Күнтізбе</a>
+    <a href="#"><i>03</i>Мерзімдер</a>
+    <a href="#"><i>04</i>Бағалар</a>
+    <a href="#"><i>05</i>GPA</a>
+    <a href="#"><i>06</i>AI Кеңесші</a>
+    <a href="#"><i>07</i>Пәндер</a>
+  </nav>
+  <span class="chip">3-к • 1-сем</span>
+</header>
+
+<div class="hero">
+  <div>
+    <p class="crumb">Aristos · Студенттік кеңістік</p>
+    <h1>Оқу күніңізге <em>шолу</em></h1>
+  </div>
+  <div class="stamp">
+    <div class="ck">✓</div>
+    <div><b>Бүгінгі сабақтар аяқталды</b><span>Бүгінгі сабақ кестесі толық аяқталды.</span></div>
+  </div>
+</div>
+
+<div class="cols">
+  <main class="left">
+    <section>
+      <div class="wk">
+        <div class="d">10 Қараша, Сейсенбі</div>
+        <div class="n"><b>11</b> / 15 апта</div>
+      </div>
+      <div class="seg" id="seg"></div>
+    </section>
+
+    <section>
+      <div class="tabs" id="tabs"></div>
+    </section>
+
+    <section class="sch">
+      <div class="h"><b>Апталық кесте</b><span>6 сабақ</span></div>
+      <div id="sch"></div>
+    </section>
+
+    <section>
+      <div class="h"><b>Ертеңгі кесте</b><span>Сәрсенбі</span></div>
+      <div id="tmr"></div>
+    </section>
+  </main>
+
+  <aside>
+    <section>
+      <div class="h"><b>Жақын мерзімдер</b><a href="#">Барлығы →</a></div>
+      <div id="dl"></div>
+    </section>
+
+    <section class="tips">
+      <div class="h"><b>Апталық кеңес</b><button class="rf" title="Жаңарту">⟳</button></div>
+      <p><b>Жақын мерзім</b>«Тест №11» — 3 күн</p>
+      <p><b>Ең төмен курс</b>INOPAK 111252-1-L — 77.95%</p>
+      <p><b>Рубежтік бақылау</b>Рубеждік бақылау 2 — 2026-12-07 … 2026-12-12</p>
+      <a class="btn" href="#">AI Кеңесші →</a>
+    </section>
+
+    <section>
+      <div class="h"><b>Пәндер радары</b></div>
+      <p class="cap">Canvas курстарының ағымдағы балы, 0–100</p>
+      <svg viewBox="0 0 400 300" id="radar"></svg>
+    </section>
+
+    <section>
+      <div class="h"><b>GPA</b><a href="#">Калькулятор →</a></div>
+      <div class="gp">
+        <div><small>Ағымдағы GPA</small><b>2.84</b></div>
+        <div><small>GPA болжамы</small><b>2.84</b></div>
+      </div>
+      <p class="note">144 кредит есепке алынды</p>
+    </section>
+
+    <section>
+      <div class="h"><b>Жазбалар</b></div>
+      <a href="https://aristoss.vercel.app">https://aristoss.vercel.app</a>
+    </section>
+  </aside>
+</div>
+
+<footer>
+  <button>Мәзір</button>
+  <span>Aristos v0.2 • Офлайн PWA</span>
+</footer>
+
+<script>
+const L3="Құқық және сыбайлас жемқорлыққа қарсы саласындағы зерттеу дағдылары",TP="Бизнес ортада сыбайлас жемқорлыққа қарсы сананы қалыптастыру.";
+const S=[["09:00","09:50","D310","Пирнепесов Ж.","Бастауыш мектептің цифрлық сауаттылығы"],["10:00","10:50","D310","Пирнепесов Ж.","Бастауыш мектептің цифрлық сауаттылығы"],["13:00","13:50","B115","Шарипова А.Б.","Инклюзивті білім беру ортасы"],["14:00","14:50","B115","Шарипова А.Б.","Инклюзивті білім беру ортасы"],["16:00","16:50","E304","Конысов А.",L3,TP],["17:00","17:50","E304","Конысов А.",L3,TP]];
+const T=[["09:00","Бұлтты және мобильдік технологиялар","D310"],["10:00","Бұлтты және мобильдік технологиялар","D310"],["11:00","Бастауыш мектептің цифрлық сауаттылығы","B302"],["13:00","Мәліметтер қорының жүйелері","D305"],["14:00","Мәліметтер қорының жүйелері","D305"],["15:00",L3,"E308"],["16:00",L3,"E205"]];
+const D=[["13","Тест №11","Құқық және жемқорлыққа қарсы мәдениет негізд…"],["14","Тест 11","Инклюзивная образовательная среда (IOS 112142-1…"],["16","ТЕСТ 12","Бұлтты және мобильдік технологиялар"],["18","БӨЖ №3","Құқық және жемқорлыққа қарсы мәдениет негізд…"]];
+const R=[["IOS 112142-1-L",92],["INOPAK 111252…",77.95],["OMT 113242-1-L",98],["OR 112142-3-L",95],["RWP 113252-1-L",96],["SBD 113242-1-L",99],["CGNSH 113242-…",88]];
+
+seg.innerHTML=Array.from({length:15},(_,i)=>`<i class="${i<10?'f':i==10?'c':''}"></i>`).join("");
+tabs.innerHTML=["Дс","Сс","Ср","Бс","Жм","Сн","Жс"].map((d,i)=>`<button class="${i==1?'on':''}">${d}</button>`).join("");
+tabs.onclick=e=>{if(e.target.tagName=="BUTTON"){[...tabs.children].forEach(b=>b.classList.remove("on"));e.target.classList.add("on")}};
+sch.innerHTML=S.map(s=>`<div class="row"><time>${s[0]}<small>${s[1]}</small></time><div><div class="meta"><span class="tag">Практика</span><span>⌖ ${s[2]}</span><span>☺ ${s[3]}</span></div><h3>${s[4]}</h3>${s[5]?`<p><b>Тақырып:</b> ${s[5]}</p>`:""}</div></div>`).join("");
+tmr.innerHTML=T.map(t=>`<div class="tm"><time>${t[0]}</time><span>${t[1]}</span><hr><em>${t[2]}</em></div>`).join("");
+dl.innerHTML=D.map(d=>`<div class="dl"><div class="dt"><b>${d[0]}</b><small>Қараша</small></div><div><h4>${d[1]}</h4><p>${d[2]}</p></div></div>`).join("");
+
+function radar(el,o){const n=R.length,{cx,cy,r}=o;
+ const ang=i=>-Math.PI/2+i*2*Math.PI/n, pt=(i,k)=>[cx+Math.cos(ang(i))*r*k,cy+Math.sin(ang(i))*r*k];
+ const poly=k=>R.map((_,i)=>pt(i,k).join(",")).join(" ");
+ let s=[.25,.5,.75,1].map(k=>`<polygon class="ring" points="${poly(k)}"/>`).join("");
+ s+=R.map((_,i)=>{const p=pt(i,1);return `<line class="ax" x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}"/>`}).join("");
+ s+=`<polygon class="area" points="${R.map((d,i)=>pt(i,d[1]/100).join(",")).join(" ")}"/>`;
+ s+=R.map((d,i)=>{const [x,y]=pt(i,1.13),c=Math.cos(ang(i));return `<text x="${x}" y="${y}" text-anchor="${c>.25?'start':c<-.25?'end':'middle'}" dy=".35em">${d[0]}</text>`}).join("");
+ el.innerHTML=s}
+radar(document.getElementById("radar"),{cx:200,cy:150,r:92});
+</script>
+</body>
+</html>

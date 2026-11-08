@@ -1,0 +1,151 @@
+# Сборка релизов Aristos: десктоп (Linux/Windows/macOS) + Android APK.
+# Триггеры: теги v* (публикация GitHub Release) и ручной запуск (артефакты).
+#
+# Секреты (опционально, для стабильной подписи APK):
+#   ANDROID_KEYSTORE_B64      — base64 keystore.jks (генерируется один раз:
+#                               keytool -genkeypair -keystore keystore.jks -alias aristos ...)
+#   ANDROID_KEYSTORE_PASSWORD — пароль keystore (иначе дефолт ниже)
+# Если секрета нет — job генерирует эфемерный keystore и выкладывает его
+# как артефакт: СКАЧАЙТЕ И СОХРАНИТЕ, иначе будущие APK не встанут поверх.
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - platform: ubuntu-24.04
+          - platform: windows-latest
+          - platform: macos-latest
+    runs-on: ${{ matrix.settings.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Linux deps
+        if: matrix.settings.platform == 'ubuntu-24.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Build (tauri-action)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: ${{ github.ref_type == 'tag' && format('Aristos {0}', github.ref_name) || '' }}
+          releaseBody: |
+            **Windows** — Aristos_x.y.z_x64-setup.exe (NSIS).
+            **macOS** — dmg без подписи: при первом запуске правый клик → «Открыть» (или `xattr -cr /Applications/Aristos.app` в терминале).
+            **Linux** — .deb / .AppImage.
+            **Android APK** — скачивается из job'а `android` (универсальный, aarch64+armv7+x86).
+          releaseDraft: false
+          prerelease: false
+
+  android:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK + NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK / SDK packages
+        run: sdkmanager "ndk;26.3.11579264" "platforms;android-34" "build-tools;34.0.0"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Generate Android project
+        run: npx tauri android init
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.3.11579264
+
+      - name: Apply Aristos overlay (widgets + manifest)
+        run: cp -r src-tauri/custom-android/. src-tauri/gen/android/
+
+      - id: ks
+        name: Prepare signing keystore
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > keystore.jks
+            echo "ephemeral=false" >> "$GITHUB_OUTPUT"
+          else
+            keytool -genkeypair -v \
+              -keystore keystore.jks -alias aristos \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass aristos-sign-2026 -keypass aristos-sign-2026 \
+              -dname "CN=Aristos, OU=Personal, O=Aristos, L=Kazakhstan, C=KZ"
+            echo "ephemeral=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::ANDROID_KEYSTORE_B64 не задан — keystore эфемерный. Скачайте артефакт keystore.jks и сохраните его (base64 → секрет), иначе следующие APK не встанут поверх старых."
+          fi
+
+      - name: Build APK (universal)
+        run: npx tauri android build --apk
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.3.11579264
+          TAURI_ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/keystore.jks
+          TAURI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'aristos-sign-2026' }}
+          TAURI_ANDROID_KEY_ALIAS: aristos
+          TAURI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'aristos-sign-2026' }}
+
+      - name: Save ephemeral keystore
+        if: steps.ks.outputs.ephemeral == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: keystore
+          path: keystore.jks
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+
+      - name: Publish APK to release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          fail_on_unmatched_files: false

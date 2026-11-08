@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Основное окно: ядро + нативные уведомления (напоминания о парах и дедлайнах).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "notification:default",
+    "allow-write-widget-data"
+  ]
+}

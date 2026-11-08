@@ -1,0 +1,30 @@
+{
+  "course": 2,
+  "semester": 2,
+  "schedule": [
+    {"day": "mon", "start": "09:00", "end": "09:50", "subject_id": "informatikanyng-teoriyalyk-negizderi", "subject_name": "Информатиканың теориялық негіздері", "type": "lecture", "room": "D212", "teacher": "Шуакбаева Р."},
+    {"day": "mon", "start": "10:00", "end": "10:50", "subject_id": "informatikanyng-teoriyalyk-negizderi", "subject_name": "Информатиканың теориялық негіздері", "type": "practice", "room": "D212", "teacher": "Урбисинова Г."},
+    {"day": "mon", "start": "11:00", "end": "11:50", "subject_id": "informatikanyng-teoriyalyk-negizderi", "subject_name": "Информатиканың теориялық негіздері", "type": "practice", "room": "D212", "teacher": "Урбисинова Г."},
+    {"day": "mon", "start": "12:00", "end": "12:50", "subject_id": "sandyk-qurylgy-arhitekturasy-ozh", "subject_name": "Сандық құрылғы архитектурасы және операциялық жүйелер", "type": "lecture", "room": "D212", "teacher": "Шуакбаева Р."},
+    {"day": "mon", "start": "13:00", "end": "13:50", "subject_id": "mobil-di-qurylgy-larga-arnalgan-bagdarlamalau", "subject_name": "Мобильді құрылғыларға арналған бағдарламалау", "type": "lecture", "room": "D212", "teacher": "Баткамбаева И.Д."},
+    {"day": "mon", "start": "14:00", "end": "14:50", "subject_id": "mobil-di-qurylgy-larga-arnalgan-bagdarlamalau", "subject_name": "Мобильді құрылғыларға арналған бағдарламалау", "type": "practice", "room": "D212", "teacher": "Баткамбаева И.Д."},
+    {"day": "mon", "start": "15:00", "end": "15:50", "subject_id": "mobil-di-qurylgy-larga-arnalgan-bagdarlamalau", "subject_name": "Мобильді құрылғыларға арналған бағдарламалау", "type": "practice", "room": "D212", "teacher": "Баткамбаева И.Д."},
+
+    {"day": "tue", "start": "09:00", "end": "09:50", "subject_id": "pedagogikalyk-zertteuler", "subject_name": "Педагогикалық зерттеулер", "type": "practice", "room": "D402", "teacher": "Шарипова А."},
+    {"day": "tue", "start": "10:00", "end": "10:50", "subject_id": "pedagogikalyk-zertteuler", "subject_name": "Педагогикалық зерттеулер", "type": "practice", "room": "D402", "teacher": "Шарипова А."},
+    {"day": "tue", "start": "12:00", "end": "12:50", "subject_id": "bilim-berudegi-sandyk-tehnologiyalar", "subject_name": "Білім берудегі сандық технологиялар", "type": "practice", "room": "E209", "teacher": "Сабитаева М."},
+    {"day": "tue", "start": "13:00", "end": "13:50", "subject_id": "bilim-berudegi-sandyk-tehnologiyalar", "subject_name": "Білім берудегі сандық технологиялар", "type": "practice", "room": "E209", "teacher": "Сабитаева М."},
+    {"day": "tue", "start": "15:00", "end": "15:50", "subject_id": "madeniettanu", "subject_name": "Мәдениеттану", "type": "practice", "room": "E308", "teacher": "Рамазанова Л."},
+    {"day": "tue", "start": "16:00", "end": "16:50", "subject_id": "madeniettanu", "subject_name": "Мәдениеттану", "type": "practice", "room": "E308", "teacher": "Рамазанова Л."},
+    {"day": "tue", "start": "17:00", "end": "17:50", "subject_id": "bilim-berudegi-sandyk-tehnologiyalar", "subject_name": "Білім берудегі сандық технологиялар", "type": "lecture", "room": "D212", "teacher": "Абдыкеримова Э.А."},
+
+    {"day": "thu", "start": "09:00", "end": "17:50", "subject_id": "askeri-isi", "subject_name": "Әскері ісі", "type": null, "room": null, "teacher": null},
+
+    {"day": "fri", "start": "09:00", "end": "09:50", "subject_id": "sayasattanu", "subject_name": "Саясаттану", "type": "practice", "room": "L-5", "teacher": "Жексембекова В.А."},
+    {"day": "fri", "start": "12:00", "end": "12:50", "subject_id": "sandyk-qurylgy-arhitekturasy-ozh", "subject_name": "Сандық құрылғы архитектурасы және операциялық жүйелер", "type": "practice", "room": "E408", "teacher": "Сабитаева М."},
+    {"day": "fri", "start": "13:00", "end": "13:50", "subject_id": "sandyk-qurylgy-arhitekturasy-ozh", "subject_name": "Сандық құрылғы архитектурасы және операциялық жүйелер", "type": "practice", "room": "E408", "teacher": "Сабитаева М."},
+    {"day": "fri", "start": "14:00", "end": "14:50", "subject_id": "pedagogikalyk-zertteuler", "subject_name": "Педагогикалық зерттеулер", "type": "lecture", "room": "E408", "teacher": "Шарипова А."},
+    {"day": "fri", "start": "15:00", "end": "15:50", "subject_id": "pedagogikalyk-zertteuler", "subject_name": "Педагогикалық зерттеулер", "type": "practice", "room": "E408", "teacher": "Шарипова А."},
+    {"day": "fri", "start": "16:00", "end": "16:50", "subject_id": "pedagogikalyk-zertteuler", "subject_name": "Педагогикалық зерттеулер", "type": "practice", "room": "E408", "teacher": "Шарипова А."}
+  ]
+}
