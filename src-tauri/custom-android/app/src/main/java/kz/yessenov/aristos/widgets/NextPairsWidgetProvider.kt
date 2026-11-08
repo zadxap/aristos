@@ -2,6 +2,7 @@ package kz.yessenov.aristos.widgets
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.widget.RemoteViews
 import kz.yessenov.aristos.R
@@ -10,12 +11,14 @@ import java.util.Calendar
 /** Виджет «Келесі сабақтар» (4×2): ближайшие 3 пары от текущего момента. */
 class NextPairsWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        updateAll(context, manager, ids)
+        updateAll(context, manager, WidgetData.load(context))
     }
 
     companion object {
-        fun updateAll(context: Context, manager: AppWidgetManager, ids: IntArray) {
-            val snap = WidgetData.load(context)
+        fun updateAll(context: Context, manager: AppWidgetManager, snap: Snapshot?) {
+            val ids = manager.getAppWidgetIds(
+                ComponentName(context, NextPairsWidgetProvider::class.java)
+            )
             for (id in ids) manager.updateAppWidget(id, buildViews(context, snap))
         }
 

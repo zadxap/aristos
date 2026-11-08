@@ -2,6 +2,7 @@ package kz.yessenov.aristos.widgets
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.widget.RemoteViews
 import kz.yessenov.aristos.R
@@ -9,12 +10,14 @@ import kz.yessenov.aristos.R
 /** Виджет «Кесте» (4×3, resize): расписание недели по дням. */
 class WeekScheduleWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        updateAll(context, manager, ids)
+        updateAll(context, manager, WidgetData.load(context))
     }
 
     companion object {
-        fun updateAll(context: Context, manager: AppWidgetManager, ids: IntArray) {
-            val snap = WidgetData.load(context)
+        fun updateAll(context: Context, manager: AppWidgetManager, snap: Snapshot?) {
+            val ids = manager.getAppWidgetIds(
+                ComponentName(context, WeekScheduleWidgetProvider::class.java)
+            )
             for (id in ids) manager.updateAppWidget(id, buildViews(context, snap))
         }
 

@@ -130,9 +130,11 @@ object WidgetData {
 
     fun dayKey(cal: Calendar): String = DAY_KEYS[cal.get(Calendar.DAY_OF_WEEK) - 1]
 
-    private fun inSemester(snap: Snapshot, dayIso: String): Boolean =
-        snap.semesterStart == null ||
-            (dayIso >= snap.semesterStart && dayIso <= snap.semesterEnd)
+    private fun inSemester(snap: Snapshot, dayIso: String): Boolean {
+        val start = snap.semesterStart ?: return true
+        val end = snap.semesterEnd ?: return true
+        return dayIso >= start && dayIso <= end
+    }
 
     private fun isHoliday(snap: Snapshot, dayIso: String): Boolean =
         snap.holidays.any { dayIso >= it.first && dayIso <= it.second }
