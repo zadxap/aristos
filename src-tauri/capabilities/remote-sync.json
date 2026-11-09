@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/remote-schema.json",
+  "identifier": "remote-sync",
+  "description": "IPC для инжект-скриптов нативного синка на внешних страницах (canvas/platonus/id). Только sync_payload — страницы не получают прочих прав.",
+  "windows": ["harvest"],
+  "remote": {
+    "urls": [
+      "https://canvas.yu.edu.kz/*",
+      "https://platonus.yu.edu.kz/*",
+      "https://id.yu.edu.kz/*"
+    ]
+  },
+  "permissions": ["allow-sync-payload"]
+}

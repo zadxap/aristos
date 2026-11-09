@@ -31,6 +31,7 @@ import { SideDrawer } from "@/components/ui/side-drawer"
 import { useConfirm } from "@/components/ui/confirm"
 import { ImportModal } from "./ImportModal"
 import { DataManageModal } from "./DataManageModal"
+import { NativeSyncSection } from "./NativeSyncSection"
 import { clearAllData } from "@/lib/db"
 import { createBackup } from "@/lib/backup"
 import {
@@ -389,6 +390,10 @@ export function SideMenu({ isOpen, onOpen, onClose }: SideMenuProps) {
           </div>
         )}
       </div>
+
+      {/* Нативный синк Canvas/Платонус — только desktop-Tauri (на вебе живёт
+          расширение, на Android данные приходят через облако) */}
+      {isTauri() && !isTauriMobile() && <NativeSyncSection />}
 
       {/* Data Actions */}
       <div className="space-y-2 border-t border-border/60 pt-2">

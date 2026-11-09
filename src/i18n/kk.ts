@@ -119,6 +119,27 @@ export const kkBase = {
   widgetDeadlines: "Мерзімдер",
   widgetEmpty: "Деректер жоқ — қосымшаны ашыңыз",
   widgetNoDeadlines: "Жақын мерзімдер жоқ",
+  syncSection: "Синктеу (қосымшадан)",
+  syncNativeHint:
+    "Деректер тікелей жанды сессиядан алынады — браузер кеңейтімі қажет емес",
+  syncCanvasBtn: "Canvas синктeу",
+  syncPlatonusDiscover: "Кезеңдерді табу",
+  syncPlatonusImport: "Таңдалғандарды импорттау",
+  syncPeriodsFound: (n: number): string => `Кезеңдер табылды: ${n}`,
+  syncStageCanvasCourses: "Canvas: курстар...",
+  syncStageCanvasAssignments: "Canvas: тапсырмалар...",
+  syncStageLogin: "Кіру терезесі ашық — кіріңіз...",
+  syncStageApply: "Қолданылуда...",
+  syncStagePlatonusPeriod: (i: number, total: number, y: number, t: number): string =>
+    `Платонус: ${y}/${t} (${i}/${total})...`,
+  syncStagePlatonusMarks: (y: number, t: number, i: number, n: number): string =>
+    `Платонус: ${y}/${t} — бағалар ${i}/${n}...`,
+  syncLoginTimeout: "Кіру уақыты өтті — қайта көріңіз",
+  syncAlreadyRunning: "Синк өтіп жатыр — күтіңіз",
+  syncTimeout: "Синк уақыты өтті",
+  syncPlatonusNoPeriods:
+    "Кезеңдер табылмады — Платонусқа кіріп, «Журнал» бөлімін бір рет ашыңыз",
+  syncPlatonusEmpty: "Барлық таңдалған кезеңдерде журнал бос",
   presetAristos: "Стандарт",
   presetOcean: "Мұхит",
   presetForest: "Орман",

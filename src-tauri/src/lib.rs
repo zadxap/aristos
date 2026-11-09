@@ -1,8 +1,10 @@
 //! Aristos — Tauri-обёртка над vite-билдом (см. ../CONTEXT.md).
 //! Фронт тот же, что в PWA. Нативные напоминания планирует
 //! tauri-plugin-notification из JS (src/lib/reminders.ts); снапшот для
-//! Android-виджетов пишет команда write_widget_data (читают Kotlin-провайдеры
-//! из custom-android/.../widgets/).
+//! Android-виджетов пишет write_widget_data; нативный синк Canvas/Платонус
+//! живёт в sync.rs (скрытые webview + инжект-скрипты + IPC).
+
+pub mod sync;
 
 /// JS передаёт JSON-снапшот (src/lib/widget-snapshot.ts). На Android кладём
 /// файл в app-каталог — его читают виджеты; на прочих платформах no-op.
@@ -28,7 +30,14 @@ fn write_widget_data(app: tauri::AppHandle, data: String) -> Result<(), String> 
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
-        .invoke_handler(tauri::generate_handler![write_widget_data])
+        .invoke_handler(tauri::generate_handler![
+            write_widget_data,
+            sync::sync_open,
+            sync::sync_eval,
+            sync::sync_url,
+            sync::sync_close,
+            sync::sync_payload,
+        ])
         .run(tauri::generate_context!())
         .expect("ошибка запуска tauri-приложения")
 }

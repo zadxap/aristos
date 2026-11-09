@@ -6,6 +6,10 @@
   "permissions": [
     "core:default",
     "notification:default",
-    "allow-write-widget-data"
+    "allow-write-widget-data",
+    "allow-sync-open",
+    "allow-sync-eval",
+    "allow-sync-url",
+    "allow-sync-close"
   ]
 }

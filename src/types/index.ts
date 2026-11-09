@@ -137,7 +137,7 @@ export interface CanvasSyncPayload {
   format: 'aristos-canvas-sync'
   version: 1
   syncedAt: string
-  source: 'userscript' | 'extension' | 'file'
+  source: 'userscript' | 'extension' | 'file' | 'app'
   courses: CanvasCourse[]
   assignments: CanvasAssignment[]
 }

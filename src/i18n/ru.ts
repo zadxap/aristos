@@ -125,6 +125,27 @@ export const ru: Dict = {
   widgetDeadlines: "Дедлайны",
   widgetEmpty: "Нет данных — откройте приложение",
   widgetNoDeadlines: "Близких дедлайнов нет",
+  syncSection: "Синхронизация (из приложения)",
+  syncNativeHint:
+    "Данные берутся напрямую из живой сессии — браузерное расширение не нужно",
+  syncCanvasBtn: "Синхронизировать Canvas",
+  syncPlatonusDiscover: "Найти доступные периоды",
+  syncPlatonusImport: "Импорт выбранных",
+  syncPeriodsFound: (n: number): string => `Найдено периодов: ${n}`,
+  syncStageCanvasCourses: "Canvas: курсы…",
+  syncStageCanvasAssignments: "Canvas: задания…",
+  syncStageLogin: "Открыто окно входа — выполните вход…",
+  syncStageApply: "Применяем…",
+  syncStagePlatonusPeriod: (i: number, total: number, y: number, t: number): string =>
+    `Платонус: ${y}/${t} (${i}/${total})…`,
+  syncStagePlatonusMarks: (y: number, t: number, i: number, n: number): string =>
+    `Платонус: ${y}/${t} — оценки ${i}/${n}…`,
+  syncLoginTimeout: "Не дождались входа — попробуйте снова",
+  syncAlreadyRunning: "Синхронизация уже идёт — подождите",
+  syncTimeout: "Синхронизация не ответила вовремя",
+  syncPlatonusNoPeriods:
+    "Периоды не найдены — войдите в Платонус и один раз откройте «Журнал»",
+  syncPlatonusEmpty: "Журнал пуст во всех выбранных периодах",
   presetAristos: "Стандарт",
   presetOcean: "Океан",
   presetForest: "Лес",

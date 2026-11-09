@@ -72,6 +72,14 @@
 - **Оффлайн-PDF (готово)**: `pdfFiles` стор в IndexedDB v4 (блобы), `src/lib/pdf-store.ts`, UI «Жүктелген PDF» в SubjectDetailPage (editMode). Блобы НЕ попадают в бекап — только локально на устройстве.
 - **Git**: история сквошнута в 1 коммит (старая с Courses/pdf — в локальном теге backup/pre-squash-2026-11-04, в публичный его НЕ пушить), force-push в origin. Репо zxrcode/aristos_v2 приватный.
 
+## Нативный синк Canvas/Платонус (09.11.2026, desktop) — замена расширения
+Механика как у расширения, но внутри приложения: скрытое/видимое webview-окно `harvest` (`src-tauri/src/sync.rs`: sync_open/sync_eval/sync_url/sync_close) грузит canvas/platonus; в него инжектятся самодостаточные скрипты `src/lib/injected/{canvas-collector,platonus-page}.js` — дословные порты userscript-коллектора (same-origin fetch + Link-пагинация + нормализация) и platonus-inpage (парсер карточек + click/probe/extract #marksModal, page-side setTimeout-поллинг — webview приложения не троттлится как MV3-таб). Результат — `invoke('sync_payload')` → событие `sync-payload` → `src/lib/native-sync.ts` (очередь сообщений, waitMessage, логин-флоу с поллингом sync_url) → валидация **существующими** isCanvasSyncPayload/isPlatonusSyncPayload → **существующие** useDB().syncCanvas/syncPlatonus (React-стейт + авто-маппинг + авто-push в облако). UI — `NativeSyncSection.tsx` в SideMenu (только `isTauri() && !isTauriMobile()`); этапы/ошибки — машина-ключи + новые i18n-ключи sync*.
+- IPC с внешних страниц: `capabilities/remote-sync.json` (remote.urls canvas/platonus/id.yu.edu.kz → окно harvest, permission allow-sync-payload) + `withGlobalTauri: true` в tauri.conf.json (window.__TAURI__ на внешних страницах). Параметры драйверу подставляются перед телом скрипта (`window.__ARISTOS_PARAMS__`).
+- Логин: при need-login окно логина (Canvas /login/canvas, Платонус SSO через id.yu.edu.kz) + поллинг sync_url до ухода со страницы входа (2 стабильных опроса) → ретрай. platonusStudentID — в settings store.
+- Ошибки-машины: need-login/login-timeout/sync-already-running/sync-timeout/platonus-no-periods/platonus-empty/invalid-payload → перевод в NativeSyncSection.errorText.
+- Payload: source: 'app' (union в types расширен); семантика applyCanvasSync (полный снапшот) сохранена.
+- Известный нюанс: сессия webview живёт в данных приложения; при сбое — кнопка синка сама предложит окно логина.
+
 ## Tauri-миграция (09.11.2026)
 PWA остаётся веб-дистрибуцией (Vercel, расширение завязано на неё); Tauri 2 — обёртка над тем же vite-билдом: desktop (Linux/Win/macOS через CI) + Android APK (sideload). iOS нативно НЕ делаем — там работает PWA (адд-хоумскрин; push в iOS-PWA — отдельная тема, вне скоупа).
 

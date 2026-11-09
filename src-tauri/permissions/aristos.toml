@@ -1,10 +1,43 @@
 # ACL для собственных команд приложения (приложение, не плагин).
-# Ссылаться из capabilities как "aristos:default".
+# Из capabilities ссылаются на идентификаторы напрямую: allow-write-widget-data и т.д.
+
 [default]
 description = "Разрешает собственные команды Aristos"
-permissions = ["allow-write-widget-data"]
+permissions = [
+  "allow-write-widget-data",
+  "allow-sync-open",
+  "allow-sync-eval",
+  "allow-sync-url",
+  "allow-sync-close",
+  "allow-sync-payload",
+]
 
 [[permission]]
 identifier = "allow-write-widget-data"
 description = "Записывает JSON-снапшот для Android-виджетов в app-каталог"
 commands.allow = ["write_widget_data"]
+
+[[permission]]
+identifier = "allow-sync-open"
+description = "Открывает скрытое/видимое webview-окно синка (нативный Canvas/Платонус синк)"
+commands.allow = ["sync_open"]
+
+[[permission]]
+identifier = "allow-sync-eval"
+description = "Инжектит скрипты синка в harvest-окно"
+commands.allow = ["sync_eval"]
+
+[[permission]]
+identifier = "allow-sync-url"
+description = "Читает текущий URL harvest-окна (детект логина)"
+commands.allow = ["sync_url"]
+
+[[permission]]
+identifier = "allow-sync-close"
+description = "Закрывает harvest-окно"
+commands.allow = ["sync_close"]
+
+[[permission]]
+identifier = "allow-sync-payload"
+description = "Инжект-скрипты на внешних страницах отдают результат синка (для remote-sync capability)"
+commands.allow = ["sync_payload"]
