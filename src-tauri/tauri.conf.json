@@ -37,6 +37,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "category": "Education",
     "shortDescription": "Студенттік дашборд — кесте, бағалар, дедлайндер",
     "longDescription": "Yessenov University студенттеріне арналған оффлайн дашборд: сабақ кестесі, Canvas тапсырмалары, Платонус бағалары, GPA калькуляторы.",

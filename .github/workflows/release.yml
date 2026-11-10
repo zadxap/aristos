@@ -98,7 +98,8 @@ jobs:
           SECRET=$(sed -n 's/^APP_UPLOAD_SECRET = "\(.*\)"$/\1/p' sync-worker/wrangler.toml)
           V=$(node -p "require('./src-tauri/tauri.conf.json').version")
           EXE=$(ls src-tauri/target/release/bundle/nsis/*.exe | head -1)
-          ls -la "$EXE" "$EXE.sig"
+          ls -la "$EXE"
+          ls -la "$EXE.sig" || true
           curl -sS --retry 3 -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${EXE}" \
             -w "exe HTTP %{http_code}\n" \
             "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_x64-setup.exe" \
@@ -115,7 +116,8 @@ jobs:
           V=$(node -p "require('./src-tauri/tauri.conf.json').version")
           TARZ=$(find src-tauri/target/release/bundle -name "*.app.tar.gz" | head -1)
           [ -n "$TARZ" ] || { echo "::warning::.app.tar.gz не найден — updater-артефакт не собрался?"; exit 0; }
-          ls -la "$TARZ" "$TARZ.sig"
+          ls -la "$TARZ"
+          ls -la "$TARZ.sig" || true
           curl -sS --retry 3 -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${TARZ}" \
             -w "tar.gz HTTP %{http_code}\n" \
             "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_aarch64.app.tar.gz" \
