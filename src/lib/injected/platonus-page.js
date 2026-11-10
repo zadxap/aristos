@@ -10,10 +10,16 @@
 
   const P = window.__ARISTOS_PARAMS__ || {}
 
+  // Breadcrumb для диагностики (см. canvas-collector.js)
+  try { document.title = 'ARISTOS_INJ' } catch (_) { /* ignore */ }
+
   function emit(msg) {
     try {
       window.__TAURI__.core.invoke('sync_payload', { json: JSON.stringify(msg) })
     } catch (err) {
+      try {
+        document.title = 'ARISTOS_E|' + String((err && err.message) || err).slice(0, 120)
+      } catch (_) { /* ignore */ }
       console.warn('[Aristos] IPC недоступен', err)
     }
   }

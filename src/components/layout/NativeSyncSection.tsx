@@ -35,13 +35,14 @@ function stageText(stage: SyncStage): string {
 /** Машина-ключ ошибки native-sync → локализованный текст. */
 function errorText(err: unknown): string {
   const m = String((err as Error)?.message || err)
+  if (m.startsWith('ARISTOS_E|')) return kk.syncFailRaw(m.slice('ARISTOS_E|'.length))
+  if (m.startsWith('sync-timeout')) return kk.syncTimeout + m.replace('sync-timeout', '')
+  if (m.startsWith('diag-no-window')) return kk.syncFailRaw('harvest window closed')
   switch (m) {
     case 'login-timeout':
       return kk.syncLoginTimeout
     case 'sync-already-running':
       return kk.syncAlreadyRunning
-    case 'sync-timeout':
-      return kk.syncTimeout
     case 'platonus-no-periods':
       return kk.syncPlatonusNoPeriods
     case 'platonus-empty':

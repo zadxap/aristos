@@ -146,6 +146,7 @@ export const ru: Dict = {
   syncPlatonusNoPeriods:
     "Периоды не найдены — войдите в Платонус и один раз откройте «Журнал»",
   syncPlatonusEmpty: "Журнал пуст во всех выбранных периодах",
+  syncFailRaw: (msg: string): string => `Ошибка синка: ${msg}`,
   presetAristos: "Стандарт",
   presetOcean: "Океан",
   presetForest: "Лес",

@@ -8,6 +8,7 @@ permissions = [
   "allow-sync-open",
   "allow-sync-eval",
   "allow-sync-url",
+  "allow-sync-diag",
   "allow-sync-close",
   "allow-sync-payload",
 ]
@@ -31,6 +32,11 @@ commands.allow = ["sync_eval"]
 identifier = "allow-sync-url"
 description = "Читает текущий URL harvest-окна (детект логина)"
 commands.allow = ["sync_url"]
+
+[[permission]]
+identifier = "allow-sync-diag"
+description = "Диагностика harvest-окна (url + title) для быстрого отказа синка"
+commands.allow = ["sync_diag"]
 
 [[permission]]
 identifier = "allow-sync-close"

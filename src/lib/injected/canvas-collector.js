@@ -7,10 +7,18 @@
 (function () {
   'use strict'
 
+  // Breadcrumb для диагностики: native-sync.ts после инжекта проверяет title
+  // harvest-окна (sync_diag) — если IPC не дошёл, увидим причину в тайтле.
+  try { document.title = 'ARISTOS_INJ' } catch (_) { /* ignore */ }
+
   function emit(msg) {
     try {
       window.__TAURI__.core.invoke('sync_payload', { json: JSON.stringify(msg) })
     } catch (err) {
+      // IPC недоступен — оставляем причину в title (читает sync_diag)
+      try {
+        document.title = 'ARISTOS_E|' + String((err && err.message) || err).slice(0, 120)
+      } catch (_) { /* ignore */ }
       console.warn('[Aristos] IPC недоступен', err)
     }
   }

@@ -8,6 +8,9 @@ pub mod sync;
 
 /// JS передаёт JSON-снапшот (src/lib/widget-snapshot.ts). На Android кладём
 /// файл в app-каталог — его читают виджеты; на прочих платформах no-op.
+/// Маппинг app_data_dir на Android неочевиден (dataDir или filesDir, с
+/// identifier-поддиректорией или без) — пишем в dir и dir/files, а Kotlin
+/// читает все четыре кандидата (WidgetData.load).
 #[tauri::command]
 fn write_widget_data(app: tauri::AppHandle, data: String) -> Result<(), String> {
     #[cfg(target_os = "android")]
@@ -15,7 +18,11 @@ fn write_widget_data(app: tauri::AppHandle, data: String) -> Result<(), String> 
         use tauri::Manager;
         let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-        std::fs::write(dir.join("widget_snapshot.json"), data).map_err(|e| e.to_string())?;
+        std::fs::write(dir.join("widget_snapshot.json"), data.clone())
+            .map_err(|e| e.to_string())?;
+        let files = dir.join("files");
+        let _ = std::fs::create_dir_all(&files);
+        let _ = std::fs::write(files.join("widget_snapshot.json"), data);
         return Ok(());
     }
     #[cfg(not(target_os = "android"))]
@@ -35,6 +42,7 @@ pub fn run() {
             sync::sync_open,
             sync::sync_eval,
             sync::sync_url,
+            sync::sync_diag,
             sync::sync_close,
             sync::sync_payload,
         ])

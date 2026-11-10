@@ -1,18 +1,19 @@
 # Сборка релизов Aristos: десктоп (Linux/Windows/macOS) + Android APK.
 # Триггеры: теги v* (публикация GitHub Release) и ручной запуск (артефакты).
 #
-# Секреты (опционально, для стабильной подписи APK):
-#   ANDROID_KEYSTORE_B64      — base64 keystore.jks (генерируется один раз:
-#                               keytool -genkeypair -keystore keystore.jks -alias aristos ...)
-#   ANDROID_KEYSTORE_PASSWORD — пароль keystore (иначе дефолт ниже)
-# Если секрета нет — job генерирует эфемерный keystore и выкладывает его
-# как артефакт: СКАЧАЙТЕ И СОХРАНИТЕ, иначе будущие APK не встанут поверх.
+# Подпись APK — стабильная: keystore коммитится в репо при первом запуске
+# (src-tauri/keystore/aristos-sign.b64, пароль aristos-sign-2026) и
+# переиспользуется — обновления APK ставятся поверх старых без сноса.
+# Альтернатива через секреты: ANDROID_KEYSTORE_B64 + ANDROID_KEYSTORE_PASSWORD.
 name: release
 
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+
+permissions:
+  contents: write
 
 jobs:
   desktop:
@@ -125,25 +126,43 @@ jobs:
         env:
           NDK_HOME: ${{ env.NDK_HOME }}
 
-      - name: Apply Aristos overlay (widgets + manifest)
-        run: cp -r src-tauri/custom-android/. src-tauri/gen/android/
+      - name: Apply Aristos overlay (widgets + manifest + icons)
+        run: |
+          cp -r src-tauri/custom-android/. src-tauri/gen/android/
+          # иконки приложения (без этого — дефолтный робот на домашнем экране)
+          mkdir -p src-tauri/gen/android/app/src/main/res
+          cp -r src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/
 
       - id: ks
         name: Prepare signing keystore
         env:
           KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "$KS_B64" ]; then
+          if [ -f src-tauri/keystore/aristos-sign.b64 ]; then
+            base64 -d src-tauri/keystore/aristos-sign.b64 > keystore.jks
+            echo "ephemeral=false" >> "$GITHUB_OUTPUT"
+            echo "Подпись из репозитория (стабильная)."
+          elif [ -n "$KS_B64" ]; then
             echo "$KS_B64" | base64 -d > keystore.jks
             echo "ephemeral=false" >> "$GITHUB_OUTPUT"
+            echo "Подпись из секрета ANDROID_KEYSTORE_B64."
           else
             keytool -genkeypair -v \
               -keystore keystore.jks -alias aristos \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -storepass aristos-sign-2026 -keypass aristos-sign-2026 \
               -dname "CN=Aristos, OU=Personal, O=Aristos, L=Kazakhstan, C=KZ"
-            echo "ephemeral=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::ANDROID_KEYSTORE_B64 не задан — keystore эфемерный. Скачайте артефакт keystore.jks и сохраните его (base64 → секрет), иначе следующие APK не встанут поверх старых."
+            echo "ephemeral=false" >> "$GITHUB_OUTPUT"
+            base64 -w0 keystore.jks > /tmp/ks.b64
+            curl -s -X PUT \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/contents/src-tauri/keystore/aristos-sign.b64" \
+              -d "{\"message\":\"ci: persist stable signing keystore\",\"content\":\"$(cat /tmp/ks.b64)\"}" \
+              | head -c 200 || true
+            echo
+            echo "::warning::Сгенерирован новый keystore и закоммичен в src-tauri/keystore/aristos-sign.b64 (пароль: aristos-sign-2026). Скачайте артефакт keystore и сохраните копию в надёжном месте."
           fi
 
       - name: Build APK (universal)
@@ -155,8 +174,7 @@ jobs:
           TAURI_ANDROID_KEY_ALIAS: aristos
           TAURI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'aristos-sign-2026' }}
 
-      - name: Save ephemeral keystore
-        if: steps.ks.outputs.ephemeral == 'true'
+      - name: Save keystore copy
         uses: actions/upload-artifact@v4
         with:
           name: keystore

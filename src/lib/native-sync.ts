@@ -104,6 +104,50 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+interface HarvestDiag {
+  url: string
+  title: string
+}
+
+/** Ждём сообщение с диагностическим watchdog: раз в ~9 с опрашиваем
+ *  sync_diag — инжект-скрипты оставляют в title причины падения IPC
+ *  ('ARISTOS_E|...') или breadcrumb 'ARISTOS_INJ'. Так «вечное кручение»
+ *  превращается в быструю осмысленную ошибку. */
+async function waitWithDiag(
+  match: (m: SyncMessage) => boolean,
+  timeoutMs: number
+): Promise<SyncMessage> {
+  const deadline = Date.now() + timeoutMs
+  let lastDiag: HarvestDiag | null = null
+  let sawInjection = false
+  while (Date.now() < deadline) {
+    const slice = Math.min(9000, deadline - Date.now())
+    const r = await Promise.race([
+      waitMessage(match, slice).then(
+        (m) => ({ kind: 'msg' as const, m }),
+        () => ({ kind: 'tick' as const })
+      ),
+      sleep(Math.max(1, slice)).then(() => ({ kind: 'tick' as const })),
+    ])
+    if (r.kind === 'msg') return r.m
+    try {
+      lastDiag = await invoke<HarvestDiag>('sync_diag')
+    } catch {
+      lastDiag = null
+    }
+    if (!lastDiag || !lastDiag.url) throw new Error('diag-no-window')
+    if (lastDiag.title.startsWith('ARISTOS_E|')) {
+      throw new Error(lastDiag.title) // причина от инжект-скрипта
+    }
+    if (lastDiag.title.startsWith('ARISTOS_INJ')) sawInjection = true
+    if (!sawInjection && lastDiag.title === 'Aristos Sync') {
+      // скрипт ещё не инжектился / страница не дозагрузилась — ждём дальше
+    }
+  }
+  const diagPart = lastDiag ? ` [diag: url=${lastDiag.url} title=${lastDiag.title}]` : ''
+  throw new Error('sync-timeout' + diagPart)
+}
+
 function driverScript(params: Record<string, unknown>): string {
   // Параметры подставляются ПЕРЕД телом драйвера — он читает
   // window.__ARISTOS_PARAMS__ на момент исполнения.
@@ -141,7 +185,10 @@ const CANVAS_MESSAGE_TYPES = ['canvas', 'need-login', 'error']
 async function runCanvasCollect(timeoutMs: number): Promise<CanvasSyncPayload> {
   await invoke('sync_open', { url: CANVAS_ORIGIN + '/', visible: false })
   await invoke('sync_eval', { js: canvasCollectorSrc })
-  const msg = await waitMessage((m) => CANVAS_MESSAGE_TYPES.includes(String(m.type)), timeoutMs)
+  const msg = await waitWithDiag(
+    (m) => CANVAS_MESSAGE_TYPES.includes(String(m.type)),
+    timeoutMs
+  )
   return parseCanvasMessage(msg)
 }
 
@@ -212,7 +259,7 @@ export async function discoverPlatonus(): Promise<{
     for (let attempt = 0; attempt < 2; attempt++) {
       await invoke('sync_open', { url: PLATONUS_ORIGIN + '/student_register', visible: false })
       await invoke('sync_eval', { js: driverScript({ mode: 'discover' }) })
-      const msg = await waitMessage(
+      const msg = await waitWithDiag(
         (m) => PLATONUS_MESSAGE_TYPES.includes(String(m.type)),
         90_000
       )
@@ -282,7 +329,7 @@ export async function runPlatonusSync(
         visible: false,
       })
       await invoke('sync_eval', { js: driverScript({ mode: 'harvest', year, term }) })
-      const msg = await waitMessage(
+      const msg = await waitWithDiag(
         (m) => PLATONUS_MESSAGE_TYPES.includes(String(m.type)),
         15 * 60_000
       )
@@ -321,7 +368,7 @@ async function discoverPlatonusUnsafe(): Promise<{
   for (let attempt = 0; attempt < 2; attempt++) {
     await invoke('sync_open', { url: PLATONUS_ORIGIN + '/student_register', visible: false })
     await invoke('sync_eval', { js: driverScript({ mode: 'discover' }) })
-    const msg = await waitMessage(
+    const msg = await waitWithDiag(
       (m) => PLATONUS_MESSAGE_TYPES.includes(String(m.type)),
       90_000
     )

@@ -10,6 +10,7 @@
     "allow-sync-open",
     "allow-sync-eval",
     "allow-sync-url",
+    "allow-sync-diag",
     "allow-sync-close"
   ]
 }

@@ -45,11 +45,31 @@ object WidgetData {
     // Calendar.DAY_OF_WEEK: SUNDAY=1..SATURDAY=7 → индекс в этом массиве
     private val DAY_KEYS = arrayOf("sun", "mon", "tue", "wed", "thu", "fri", "sat")
 
-    fun load(context: Context): Snapshot? = try {
-        val file = context.filesDir.resolve(FILE)
-        if (!file.exists()) null else parse(file.readText())
-    } catch (_: Exception) {
-        null
+    /** Маппинг app_data_dir у Tauri на Android неочевиден, поэтому Rust пишет
+     *  снапшот в dir и dir/files, а мы пробуем все разумные кандидаты. */
+    fun snapshotCandidates(context: Context): List<java.io.File> {
+        val dataDir = context.applicationInfo.dataDir
+        val pkg = context.packageName
+        return listOf(
+            context.filesDir.resolve(FILE),
+            java.io.File(dataDir, FILE),
+            java.io.File(dataDir, "$pkg/$FILE"),
+            context.filesDir.resolve(pkg).resolve(FILE),
+        )
+    }
+
+    fun load(context: Context): Snapshot? {
+        for (file in snapshotCandidates(context)) {
+            try {
+                if (file.exists()) {
+                    val snap = parse(file.readText())
+                    if (snap != null) return snap
+                }
+            } catch (_: Exception) {
+                // пробуем следующий кандидат
+            }
+        }
+        return null
     }
 
     private fun parse(text: String): Snapshot? = try {

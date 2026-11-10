@@ -140,6 +140,7 @@ export const kkBase = {
   syncPlatonusNoPeriods:
     "Кезеңдер табылмады — Платонусқа кіріп, «Журнал» бөлімін бір рет ашыңыз",
   syncPlatonusEmpty: "Барлық таңдалған кезеңдерде журнал бос",
+  syncFailRaw: (msg: string): string => `Синк қатесі: ${msg}`,
   presetAristos: "Стандарт",
   presetOcean: "Мұхит",
   presetForest: "Орман",

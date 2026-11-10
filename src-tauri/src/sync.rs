@@ -73,6 +73,19 @@ pub fn sync_url(app: AppHandle) -> Result<String, String> {
     }
 }
 
+/// Диагностика: URL + заголовок harvest-окна. Инжект-скрипты в fallback
+/// пишут в title «ARISTOS_E|причина», если IPC до нас не дошёл.
+#[tauri::command]
+pub fn sync_diag(app: AppHandle) -> Result<serde_json::Value, String> {
+    match app.get_webview_window(HARVEST_LABEL) {
+        Some(win) => Ok(serde_json::json!({
+            "url": win.url().map(|u| u.to_string()).unwrap_or_default(),
+            "title": win.title().unwrap_or_default(),
+        })),
+        None => Ok(serde_json::json!({ "url": "", "title": "NO-WINDOW" })),
+    }
+}
+
 #[tauri::command]
 pub fn sync_close(app: AppHandle) -> Result<(), String> {
     if let Some(win) = app.get_webview_window(HARVEST_LABEL) {
