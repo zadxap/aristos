@@ -11,3 +11,6 @@ id = "5bd447c5eef34c89b7d8a5ce5cb20ff0"
 # "*" — доступ с любого сайта (для разработки). Иначе — список доменов через запятую.
 # tauri.localhost — WebView-обёртка Tauri (Android/Windows: http://, iOS/macOS/Linux: tauri://).
 ALLOWED_ORIGIN = "https://aristoss.vercel.app,https://aristos-lovat.vercel.app,http://localhost:5174,http://localhost:5173,http://tauri.localhost,tauri://localhost"
+# Секрет загрузки релизов в канал обновлений (PUT /api/app/* из CI).
+# CI берёт его из этого же файла — менять одновременно тут и нигде больше.
+APP_UPLOAD_SECRET = "343b66f2bafa2ceab5debca4662657a1"

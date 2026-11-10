@@ -80,6 +80,9 @@
 - Payload: source: 'app' (union в types расширен); семантика applyCanvasSync (полный снапшот) сохранена.
 - Известный нюанс: сессия webview живёт в данных приложения; при сбое — кнопка синка сама предложит окно логина.
 
+## Канал обновлений (11.11.2026)
+Воркер = хостинг релизов: PUT /api/app/file/:name + /api/app/meta (секрет X-App-Upload-Secret из wrangler.toml APP_UPLOAD_SECRET, CI читает его из этого же файла), GET /api/app/latest + /api/app/file/:name (публично, KV, лимит 25 МБ). CI после сборок: android заливает Aristos-<v>.apk; windows — NSIS exe+.sig; macos — .app.tar.gz+.sig; job publish-updates собирает latest.json (подписи minisign — pubkey в tauri.conf.json, приватный в src-tauri/keystore/aristos-updater.b64, пароль aristos-sign-2026) и meta. App: `src/lib/app-update.ts` + `UpdateSection.tsx` в SideMenu — Android: сравнение версий + openUrl(APK) через plugin-opener (ставится поверх, подпись стабильная); desktop: tauri-plugin-updater (downloadAndInstall + relaunch через plugin-process). AppImage 100 МБ в KV не влезает — Linux-апдейтер не хостится (deb вручную). Требует: `cd sync-worker && npx wrangler deploy` (новые endpoint'ы + APP_UPLOAD_SECRET).
+
 ## Tauri-миграция (09.11.2026)
 PWA остаётся веб-дистрибуцией (Vercel, расширение завязано на неё); Tauri 2 — обёртка над тем же vite-билдом: desktop (Linux/Win/macOS через CI) + Android APK (sideload). iOS нативно НЕ делаем — там работает PWA (адд-хоумскрин; push в iOS-PWA — отдельная тема, вне скоупа).
 

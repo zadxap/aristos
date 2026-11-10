@@ -56,11 +56,20 @@ jobs:
 
       - run: npm ci
 
+      - name: Updater signing keys (приватный ключ из репо)
+        run: |
+          echo "TAURI_SIGNING_PRIVATE_KEY<<KEYEOF" >> "$GITHUB_ENV"
+          base64 -d src-tauri/keystore/aristos-updater.b64 >> "$GITHUB_ENV"
+          echo "" >> "$GITHUB_ENV"
+          echo "KEYEOF" >> "$GITHUB_ENV"
+          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=aristos-sign-2026" >> "$GITHUB_ENV"
+
       - name: Build (tauri-action)
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          includeUpdaterArtifacts: true
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: ${{ github.ref_type == 'tag' && format('Aristos {0}', github.ref_name) || '' }}
           releaseBody: |
@@ -78,6 +87,33 @@ jobs:
           path: ${{ matrix.settings.artifacts }}
           if-no-files-found: error
           retention-days: 90
+
+      - name: Publish updater artifact (Windows → воркер)
+        if: matrix.settings.platform == 'windows-latest'
+        run: |
+          SECRET=$(grep -oP 'APP_UPLOAD_SECRET = "\K[^"]+' sync-worker/wrangler.toml)
+          V=$(python3 -c "import json;print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
+          EXE=$(ls src-tauri/target/release/bundle/nsis/*.exe | head -1)
+          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${EXE}" \
+            "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_x64-setup.exe" \
+            || echo "::warning::Не удалось залить exe в воркер — редеплой с APP_UPLOAD_SECRET?"
+          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${EXE}.sig" \
+            "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_x64-setup.exe.sig" \
+            || echo "::warning::Не удалось залить sig в воркер."
+
+      - name: Publish updater artifact (macOS → воркер)
+        if: matrix.settings.platform == 'macos-latest'
+        run: |
+          SECRET=$(grep -oP 'APP_UPLOAD_SECRET = "\K[^"]+' sync-worker/wrangler.toml)
+          V=$(python3 -c "import json;print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
+          TARZ=$(find src-tauri/target/release/bundle -name "*.app.tar.gz" | head -1)
+          [ -n "$TARZ" ] || { echo "::warning::.app.tar.gz не найден — updater-артефакт не собрался?"; exit 0; }
+          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${TARZ}" \
+            "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_aarch64.app.tar.gz" \
+            || echo "::warning::Не удалось залить app.tar.gz в воркер."
+          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${TARZ}.sig" \
+            "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_aarch64.app.tar.gz.sig" \
+            || echo "::warning::Не удалось залить sig в воркер."
 
   android:
     runs-on: ubuntu-24.04
@@ -187,9 +223,58 @@ jobs:
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
 
+      - name: Publish APK to update channel
+        run: |
+          SECRET=$(grep -oP 'APP_UPLOAD_SECRET = "\K[^"]+' sync-worker/wrangler.toml)
+          V=$(python3 -c "import json;print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
+          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)
+          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${APK}" \
+            "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}.apk" \
+            || echo "::warning::Не удалось залить APK в воркер — редеплой с APP_UPLOAD_SECRET?"
+
       - name: Publish APK to release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           fail_on_unmatched_files: false
+
+  # Финализация канала обновлений: latest.json (для tauri-plugin-updater)
+  # и meta (для мобильного баннера) — после android + всех desktop-сборок.
+  publish-updates:
+    needs: [android, desktop]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble latest.json and publish meta
+        run: |
+          SECRET=$(grep -oP 'APP_UPLOAD_SECRET = "\K[^"]+' sync-worker/wrangler.toml)
+          V=$(python3 -c "import json;print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
+          W="https://aristos-sync.aristoss.workers.dev"
+          SIG_WIN=$(curl -sf "$W/api/app/file/Aristos_${V}_x64-setup.exe.sig" || echo "")
+          SIG_MAC=$(curl -sf "$W/api/app/file/Aristos_${V}_aarch64.app.tar.gz.sig" || echo "")
+          python3 - "$V" "$W" "$SIG_WIN" "$SIG_MAC" <<'PY' > /tmp/latest.json
+          import json, sys, datetime
+          version, worker, sig_win, sig_mac = sys.argv[1:5]
+          platforms = {}
+          if sig_win:
+              platforms["windows-x86_64"] = {
+                  "signature": sig_win,
+                  "url": f"{worker}/api/app/file/Aristos_{version}_x64-setup.exe",
+              }
+          if sig_mac:
+              platforms["darwin-aarch64"] = {
+                  "signature": sig_mac,
+                  "url": f"{worker}/api/app/file/Aristos_{version}_aarch64.app.tar.gz",
+              }
+          now = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+          json.dump({"version": version, "notes": f"Aristos {version}", "pub_date": now, "platforms": platforms}, sys.stdout)
+          PY
+          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@/tmp/latest.json" \
+            "$W/api/app/file/latest.json" || echo "::warning::latest.json не залит — редеплой воркера с APP_UPLOAD_SECRET?"
+          FILES=$(python3 -c "import json;print(json.dumps({'apk': 'Aristos_${V}.apk', 'windows': 'Aristos_${V}_x64-setup.exe', 'macos': 'Aristos_${V}_aarch64.app.tar.gz', 'updater': 'latest.json'}))")
+          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" -H "Content-Type: application/json" \
+            -d "{\"version\": \"$V\", \"notes\": \"Aristos $V\", \"files\": $FILES}" \
+            "$W/api/app/meta" || echo "::warning::meta не залита."
+          echo "Канал обновлений опубликован: версия $V"
