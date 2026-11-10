@@ -98,10 +98,13 @@ jobs:
           SECRET=$(sed -n 's/^APP_UPLOAD_SECRET = "\(.*\)"$/\1/p' sync-worker/wrangler.toml)
           V=$(node -p "require('./src-tauri/tauri.conf.json').version")
           EXE=$(ls src-tauri/target/release/bundle/nsis/*.exe | head -1)
-          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${EXE}" \
+          ls -la "$EXE" "$EXE.sig"
+          curl -sS --retry 3 -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${EXE}" \
+            -w "exe HTTP %{http_code}\n" \
             "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_x64-setup.exe" \
-            || echo "::warning::Не удалось залить exe в воркер — редеплой с APP_UPLOAD_SECRET?"
-          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${EXE}.sig" \
+            || echo "::warning::Не удалось залить exe в воркер."
+          curl -sS --retry 3 -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${EXE}.sig" \
+            -w "sig HTTP %{http_code}\n" \
             "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_x64-setup.exe.sig" \
             || echo "::warning::Не удалось залить sig в воркер."
 
@@ -112,10 +115,13 @@ jobs:
           V=$(node -p "require('./src-tauri/tauri.conf.json').version")
           TARZ=$(find src-tauri/target/release/bundle -name "*.app.tar.gz" | head -1)
           [ -n "$TARZ" ] || { echo "::warning::.app.tar.gz не найден — updater-артефакт не собрался?"; exit 0; }
-          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${TARZ}" \
+          ls -la "$TARZ" "$TARZ.sig"
+          curl -sS --retry 3 -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${TARZ}" \
+            -w "tar.gz HTTP %{http_code}\n" \
             "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_aarch64.app.tar.gz" \
             || echo "::warning::Не удалось залить app.tar.gz в воркер."
-          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${TARZ}.sig" \
+          curl -sS --retry 3 -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${TARZ}.sig" \
+            -w "sig HTTP %{http_code}\n" \
             "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_aarch64.app.tar.gz.sig" \
             || echo "::warning::Не удалось залить sig в воркер."
 
@@ -211,14 +217,26 @@ jobs:
             echo "::warning::Сгенерирован новый keystore и закоммичен в src-tauri/keystore/aristos-sign.b64 (пароль: aristos-sign-2026). Скачайте артефакт keystore и сохраните копию в надёжном месте."
           fi
 
-      - name: Build APK (universal)
-        run: npx tauri android build --apk
+      - name: Build APK (aarch64 — universal 36 МБ не влезает в KV 25 МБ)
+        run: npx tauri android build --apk --target aarch64
         env:
           NDK_HOME: ${{ env.NDK_HOME }}
           TAURI_ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/keystore.jks
           TAURI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'aristos-sign-2026' }}
           TAURI_ANDROID_KEY_ALIAS: aristos
           TAURI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'aristos-sign-2026' }}
+
+      - name: Sign APK (zipalign + apksigner — независимо от CLI)
+        run: |
+          V=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)
+          BT=$(ls -d /usr/local/lib/android/sdk/build-tools/* | sort -V | tail -1)
+          "$BT/zipalign" -f 4 "$APK" aligned.apk
+          "$BT/apksigner" sign --ks keystore.jks \
+            --ks-pass pass:aristos-sign-2026 --key-pass pass:aristos-sign-2026 \
+            --ks-key-alias aristos --out "Aristos_${V}.apk" aligned.apk
+          "$BT/apksigner" verify "Aristos_${V}.apk"
+          echo "SIGNED_APK=Aristos_${V}.apk" >> "$GITHUB_ENV"
 
       - name: Save keystore copy
         uses: actions/upload-artifact@v4
@@ -230,23 +248,22 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: ${{ env.SIGNED_APK }}
           if-no-files-found: error
 
       - name: Publish APK to update channel
         run: |
           SECRET=$(sed -n 's/^APP_UPLOAD_SECRET = "\(.*\)"$/\1/p' sync-worker/wrangler.toml)
-          V=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)
-          curl -sf -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${APK}" \
-            "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}.apk" \
-            || echo "::warning::Не удалось залить APK в воркер — редеплой с APP_UPLOAD_SECRET?"
+          curl -sS --retry 3 -X PUT -H "X-App-Upload-Secret: $SECRET" \
+            --data-binary "@${SIGNED_APK}" -w "\nHTTP %{http_code}\n" \
+            "https://aristos-sync.aristoss.workers.dev/api/app/file/${SIGNED_APK}" \
+            || echo "::warning::Не удалось залить APK в воркер."
 
       - name: Publish APK to release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          files: ${{ env.SIGNED_APK }}
           fail_on_unmatched_files: false
 
   # Финализация канала обновлений: latest.json (для tauri-plugin-updater)
