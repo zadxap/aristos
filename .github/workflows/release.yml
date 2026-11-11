@@ -126,6 +126,12 @@ jobs:
             -w "sig HTTP %{http_code}\n" \
             "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}_aarch64.app.tar.gz.sig" \
             || echo "::warning::Не удалось залить sig в воркер."
+          # dmg для ручной установки со страницы загрузок
+          DMG=$(ls src-tauri/target/release/bundle/dmg/*.dmg | head -1)
+          [ -n "$DMG" ] && curl -sS --retry 3 -X PUT -H "X-App-Upload-Secret: $SECRET" --data-binary "@${DMG}" \
+            -w "dmg HTTP %{http_code}\n" \
+            "https://aristos-sync.aristoss.workers.dev/api/app/file/Aristos_${V}.dmg" \
+            || echo "::warning::Не удалось залить dmg в воркер."
 
   android:
     runs-on: ubuntu-24.04
