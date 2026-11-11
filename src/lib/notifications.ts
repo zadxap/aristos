@@ -19,6 +19,8 @@ export interface NotifSettings {
   deadlines: boolean
   /** за сколько минут предупреждать о паре */
   minutesBefore: number
+  /** утренний дайджест: расписание дня одним уведомлением */
+  digest: boolean
 }
 
 const SETTINGS_KEY = "aristos-notif-settings-v1"
@@ -28,6 +30,7 @@ const DEFAULT_SETTINGS: NotifSettings = {
   lessons: true,
   deadlines: true,
   minutesBefore: 5,
+  digest: true,
 }
 
 export function notificationsSupported(): boolean {
@@ -67,6 +70,7 @@ export function loadNotifSettings(): NotifSettings {
         typeof parsed.minutesBefore === "number" && parsed.minutesBefore > 0
           ? parsed.minutesBefore
           : DEFAULT_SETTINGS.minutesBefore,
+      digest: parsed.digest ?? DEFAULT_SETTINGS.digest,
     }
   } catch {
     return DEFAULT_SETTINGS
@@ -129,8 +133,10 @@ export async function notifyOncePerDay(
     const options: NotificationOptions & { badge?: string } = {
       body,
       tag,
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      // Монохромный глиф на прозрачном: непрозрачный квадрат Android рисует
+      // белым квадратом в шторке (asset: public/icons/notification-badge.svg).
+      icon: "/icons/notification-badge.png",
+      badge: "/icons/notification-badge.png",
     }
     const reg = await navigator.serviceWorker?.getRegistration()
     if (reg) {

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Монохромный глиф «A» (по мотивам лого public/icons/icon.svg, пути те же,
+     белый на прозрачном) — smallIcon для уведомлений. Прописан как дефолт
+     в tauri.conf.json → plugins.notification.icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M95,415 L256,98 L255.875,170.144 L256,212.638 L175.5,369.559 L256,324.118 L256,369.559 L175.5,369.559 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M417,415 L256,98 L253.704,168.305 L256,212.638 L336.5,369.559 L256,324.118 L256,369.559 L336.5,369.559 Z" />
+</vector>

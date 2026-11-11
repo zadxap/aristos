@@ -361,6 +361,17 @@ export function SideMenu({ isOpen, onOpen, onClose }: SideMenuProps) {
                 className="size-4 cursor-pointer accent-primary"
               />
             </label>
+            <label className="flex cursor-pointer items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs font-medium">
+              {kk.notifDigest}
+              <input
+                type="checkbox"
+                checked={notifSettings.digest}
+                onChange={(e) =>
+                  updateNotif({ ...notifSettings, digest: e.target.checked })
+                }
+                className="size-4 cursor-pointer accent-primary"
+              />
+            </label>
             <div className="space-y-1">
               <span className="text-[11px] text-muted-foreground">
                 {kk.notifBefore}

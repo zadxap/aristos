@@ -111,6 +111,9 @@ export const kkBase = {
   notifDeadlineTitle: "Мерзім жақындады",
   notifBefore: "Пән басталар алдында",
   notifMinutesShort: "мин",
+  notifDigest: "Күн жоспары (таңертең)",
+  notifDigestTitle: (n: number): string => `Бүгін ${n} сабақ`,
+  notifDigestFirst: (t: string): string => `Бірінші сабақ — ${t}`,
   notifNativeHint:
     "Телефонда еске салғыштар жабық кезінде де жұмыс істейді",
   widgetToday: "Бүгін",

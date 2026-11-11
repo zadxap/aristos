@@ -60,37 +60,58 @@ export function NotificationAgent() {
       const todayKey = isoDay(now)
       const nowMinutes = now.getHours() * 60 + now.getMinutes()
 
-      // 1) Ближайшая пара сегодня (вне праздников и вне семестра — тишина)
-      if (settings.lessons && schedule && calendar) {
-        const sem = calendar.semesters?.find(
-          (s) => s.semester === activeSemester
-        )
-        const inSemester =
-          sem && todayKey >= sem.semester_start && todayKey <= sem.semester_end
-        const isHoliday = sem?.holidays?.some(
-          (h) => todayKey >= h.start && todayKey <= h.end
-        )
-        if (inSemester && !isHoliday) {
-          const dayKey = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][
-            now.getDay()
-          ]
-          const lessons = (schedule.schedule || [])
-            .filter((e) => e.day.toLowerCase() === dayKey)
-            .sort((a, b) => a.start.localeCompare(b.start))
-          for (const lesson of lessons) {
-            const [h, m] = lesson.start.split(":").map(Number)
-            const diff = h * 60 + m - nowMinutes
-            if (diff > 0 && diff <= settings.minutesBefore) {
-              void notifyOncePerDay(
-                `lesson-${todayKey}-${lesson.start}`,
-                todayKey,
-                kk.notifLessonTitle,
-                `${lesson.subject_name} · ${lesson.start}${lesson.room ? ` · ${lesson.room}` : ""}`
+      // Пары сегодня (вне праздников и вне семестра — тишина): общая выборка
+      // для напоминания перед парой и утреннего дайджеста.
+      const sem = calendar?.semesters?.find(
+        (s) => s.semester === activeSemester
+      )
+      const inSemester =
+        !!sem && todayKey >= sem.semester_start && todayKey <= sem.semester_end
+      const isHoliday = !!sem?.holidays?.some(
+        (h) => todayKey >= h.start && todayKey <= h.end
+      )
+      const dayLessons =
+        inSemester && !isHoliday && schedule
+          ? (schedule.schedule || [])
+              .filter(
+                (e) =>
+                  e.day.toLowerCase() ===
+                  ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][
+                    now.getDay()
+                  ]
               )
-              break // одно уведомление на тик
-            }
+              .sort((a, b) => a.start.localeCompare(b.start))
+          : []
+
+      // 1) Ближайшая пара: предмет в заголовке, время/аудитория в теле
+      if (settings.lessons) {
+        for (const lesson of dayLessons) {
+          const [h, m] = lesson.start.split(":").map(Number)
+          const diff = h * 60 + m - nowMinutes
+          if (diff > 0 && diff <= settings.minutesBefore) {
+            void notifyOncePerDay(
+              `lesson-${todayKey}-${lesson.start}`,
+              todayKey,
+              lesson.subject_name,
+              `${kk.notifLessonTitle} · ${lesson.start}${lesson.room ? ` · ${lesson.room}` : ""}`
+            )
+            break // одно уведомление на тик
           }
         }
+      }
+
+      // 1б) Дайджест дня: одно уведомление с 07:30 до конца дня
+      if (
+        settings.digest &&
+        dayLessons.length > 0 &&
+        nowMinutes >= 7 * 60 + 30
+      ) {
+        void notifyOncePerDay(
+          `digest-${todayKey}`,
+          todayKey,
+          kk.notifDigestTitle(dayLessons.length),
+          kk.notifDigestFirst(dayLessons[0].start)
+        )
       }
 
       // 2) Дедлайны Canvas: не сданные, со сроком (или «Доступно до») в ближайшие 48 часов
@@ -105,8 +126,8 @@ export function NotificationAgent() {
           void notifyOncePerDay(
             `deadline-${assignment.id}`,
             todayKey,
-            kk.notifDeadlineTitle,
-            `${assignment.title} — ${dueStr}`
+            assignment.title,
+            `${kk.notifDeadlineTitle}: ${dueStr}`
           )
         }
       }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Светлый фон виджета (slate-50 @ 90% — симметрично тёмному #E60B1220).
+     Выбирается в WidgetRenderer.palette() по ночному режиму системы. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#E6F8FAFC" />
+    <corners android:radius="18dp" />
+</shape>

@@ -27,6 +27,10 @@
     }
   },
   "plugins": {
+    "notification": {
+      "icon": "ic_notification",
+      "iconColor": "#38BDF8"
+    },
     "updater": {
       "endpoints": [
         "https://aristos-sync.aristoss.workers.dev/api/app/file/latest.json"

@@ -203,15 +203,16 @@ Web Notification API (через Service Worker, если доступен). П�
 асинхронные — синхронно возвращается `default`, UI (SideMenu) уточняет
 эффектом. Настройки — `localStorage` (`aristos-notif-settings-v1`):
 `lessons`, `deadlines`, `minutesBefore` (по умолчанию 5; выбор
-5/10/15/30 в SideMenu). Журнал показанного — `aristos-notif-shown-v1`
+5/10/15/30 в SideMenu), `digest` (утренний дайджест дня, по умолчанию вкл).
+Журнал показанного — `aristos-notif-shown-v1`
 (`notifyOncePerDay` — в-app тик, чтобы не спамить каждый тик).
 
 ### 4.2 Desktop-Tauri
 
 Планирование не используется: плагин на десктопе доставил бы «запланированное»
 немедленно. Работает in-app агент `NotificationAgent` (прежняя v0-логика:
-пары за `minutesBefore`, дедлайны за 24 ч, `notifyOncePerDay`), но отправка
-идёт через нативный плагин.
+пары за `minutesBefore`, дедлайны за 24 ч, дайджест дня с 07:30,
+`notifyOncePerDay`), но отправка идёт через нативный плагин.
 
 ### 4.3 Android (Tauri mobile) — напоминания при закрытом приложении
 
@@ -227,10 +228,29 @@ Web Notification API (через Service Worker, если доступен). П�
   начала; вне семестра и в праздники (`acad_calendar`) — тишина.
 - **Дедлайны Canvas**: не сданные (`!submitted_at`), за 24 ч до `due_at`
   (если уже ближе — через минуту).
+- **Дайджест дня**: раз в сутки в 07:30 — одно тихое уведомление со списком
+  пар дня (InboxStyle, до 8 строк «09:00 — Пән»), канал `aristos-digest`
+  (Default, без вибрации), тумблер `digest` в настройках. На PWA дайджест
+  идёт через in-app агент (первый тик дня после 07:30), без InboxStyle.
+
+Контент: заголовок = предмет/название теста (важное первым и обрезается
+последним), тело = «Сабақ жақында · 09:00 · аудитория»; `largeBody` —
+полная строка в развёрнутой шторке. Группы `aristos-lessons` /
+`aristos-deadlines` / `aristos-digest` — однотипные уведомления сворачиваются
+в стек (автосводка Android 7+).
 
 Каналы Android: `aristos-lessons` и `aristos-deadlines`
-(importance HIGH, вибрация, огни). Разрешения манифеста: `POST_NOTIFICATIONS`,
+(importance HIGH, вибрация, огни) и тихий `aristos-digest` (Default).
+Разрешения манифеста: `POST_NOTIFICATIONS`,
 `SCHEDULE_EXACT_ALARM`, `VIBRATE`.
+
+Иконка/акцент: `tauri.conf.json → plugins.notification` задаёт дефолтные
+`icon: ic_notification` (белый вектор-глиф «A» в
+`custom-android/.../res/drawable/`; до этого плагин подставлял системный
+`ic_dialog_info` — серый квадрат) и `iconColor: #38BDF8` (setColor — тинт
+иконки). PWA-путь использует монохромный
+`public/icons/notification-badge.png` (белый глиф на прозрачном; прежний
+непрозрачный `icon-192.png` Android рисовал белым квадратом).
 
 Рефреш-триггеры (мобильная ветка `NotificationAgent`): открытие приложения,
 visibilitychange, каждые 6 ч, после синков, смена настроек уведомлений.
@@ -263,6 +283,12 @@ visibilitychange, каждые 6 ч, после синков, смена нас�
    от текущего момента — контент не застывает между обновлениями приложения.
    Каждая строка уже локализована в снапшоте — Kotlin ничего не переводит.
 4. **Тап** по виджету → PendingIntent launch приложения.
+5. **Палитра** (`WidgetRenderer.palette`): тёмная/светлая по ночному режиму
+   системы на момент рендера (`UI_MODE_NIGHT_MASK`) — фон
+   `widget_bg`/`widget_bg_light`, цвета строк рантайм `setTextColor`
+   (XML-цвета — фоллбек). Акценты: у «Мерзімдер» дедлайны ближе 24 ч —
+   оранжевое время; у «Кесте» сегодняшний день — яркий акцент заголовка
+   дня + суффикс « · Бүгін».
 
 ### Обновления
 

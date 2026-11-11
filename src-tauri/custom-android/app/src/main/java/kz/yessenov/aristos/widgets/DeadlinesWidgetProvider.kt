@@ -7,13 +7,16 @@ import android.content.Context
 import android.widget.RemoteViews
 import kz.yessenov.aristos.R
 
-/** Виджет «Мерзімдер» (4×2, resize): ближайшие дедлайны Canvas. */
+/** Виджет «Мерзімдер» (4×2, resize): ближайшие дедлайны Canvas.
+ *  Дедлайны ближе суток подсвечиваются оранжевым (urgent-палитра). */
 class DeadlinesWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         updateAll(context, manager, WidgetData.load(context))
     }
 
     companion object {
+        private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
+
         fun updateAll(context: Context, manager: AppWidgetManager, snap: Snapshot?) {
             val ids = manager.getAppWidgetIds(
                 ComponentName(context, DeadlinesWidgetProvider::class.java)
@@ -22,22 +25,24 @@ class DeadlinesWidgetProvider : AppWidgetProvider() {
         }
 
         fun buildViews(context: Context, snap: Snapshot?): RemoteViews {
-            val views = WidgetRenderer.root(context, R.layout.widget_list)
+            val pal = WidgetRenderer.palette(context)
+            val views = WidgetRenderer.root(context, R.layout.widget_list, pal)
             views.removeAllViews(R.id.widget_rows)
-            WidgetRenderer.applyHeader(views, "Aristos")
+            WidgetRenderer.applyHeader(views, "Aristos", pal)
             if (snap == null) {
-                WidgetRenderer.addTextRow(views, R.id.widget_rows, context, "—", muted = true)
+                WidgetRenderer.addTextRow(views, R.id.widget_rows, context, "—", pal, muted = true)
                 return views
             }
-            views.removeAllViews(R.id.widget_rows)
-            WidgetRenderer.applyHeader(views, snap.labels["deadlines"] ?: "Deadlines")
-            val items = WidgetData.upcomingDeadlines(snap, System.currentTimeMillis(), 4)
+            WidgetRenderer.applyHeader(views, snap.labels["deadlines"] ?: "Deadlines", pal)
+            val now = System.currentTimeMillis()
+            val items = WidgetData.upcomingDeadlines(snap, now, 4)
             if (items.isEmpty()) {
                 WidgetRenderer.addTextRow(
                     views,
                     R.id.widget_rows,
                     context,
                     snap.labels["noDeadlines"] ?: "—",
+                    pal,
                     muted = true,
                 )
             } else {
@@ -49,6 +54,8 @@ class DeadlinesWidgetProvider : AppWidgetProvider() {
                         context,
                         WidgetData.formatDue(dl.dueAtMillis),
                         dl.title + course,
+                        pal,
+                        urgent = dl.dueAtMillis - now < DAY_MILLIS,
                     )
                 }
             }

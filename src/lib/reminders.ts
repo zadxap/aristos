@@ -2,7 +2,12 @@
  *  неделю вперёд из локальных данных — срабатывают при закрытом приложении.
  *  На вебе/PWA и на десктопе не используется (там работает in-app агент —
  *  NotificationAgent, а на десктопе плагин доставил бы «запланированное»
- *  немедленно). Логика отбора повторяет фильтры NotificationAgent. */
+ *  немедленно). Логика отбора повторяет фильтры NotificationAgent.
+ *
+ *  Контент: заголовок = предмет/название теста (важное первым и меньше
+ *  обрезается), тело = «Сабақ жақында · 09:00 · аудитория». Однотипные
+ *  уведомления объединяются в группы (group-ключи) — шторка сворачивает
+ *  стек. Плюс утренний дайджест дня (InboxStyle, тихий канал). */
 
 import {
   cancelAll,
@@ -35,6 +40,15 @@ const HORIZON_DAYS = 7
 const MAX_EVENTS = 100
 const CHANNEL_LESSONS = 'aristos-lessons'
 const CHANNEL_DEADLINES = 'aristos-deadlines'
+/** Дайджест — тихий канал отдельно от «сабақ басталды» (важность Default). */
+const CHANNEL_DIGEST = 'aristos-digest'
+const GROUP_LESSONS = 'aristos-lessons'
+const GROUP_DEADLINES = 'aristos-deadlines'
+const GROUP_DIGEST = 'aristos-digest'
+/** Дайджест приходит утром, до пар; строк в развёрнутом списке — до 8. */
+const DIGEST_HOUR = 7
+const DIGEST_MINUTE = 30
+const DIGEST_MAX_LINES = 8
 
 let channelsReady = false
 
@@ -68,6 +82,11 @@ async function ensureChannels(): Promise<void> {
     vibration: true,
     lights: true,
   })
+  await createChannel({
+    id: CHANNEL_DIGEST,
+    name: kk.notifDigest,
+    importance: Importance.Default,
+  })
   channelsReady = true
 }
 
@@ -75,6 +94,14 @@ interface ReminderEvent {
   id: number
   title: string
   body: string
+  /** Развёрнутый текст (BigTextStyle): полный предмет/название в шторке. */
+  largeBody?: string
+  /** Список строк (InboxStyle) — только у дайджеста. */
+  inboxLines?: string[]
+  /** Подпись стиля: «Aristos» под развёрнутым текстом. */
+  summary?: string
+  /** Группа в шторке: однотипные уведомления сворачиваются в стек. */
+  group?: string
   fireAt: number
   channel: string
 }
@@ -85,25 +112,29 @@ export function computeReminderEvents(input: ReminderInput): ReminderEvent[] {
   const horizon = now + (HORIZON_DAYS + 1) * DAY
   const events: ReminderEvent[] = []
 
-  // 1) Пары: ближайшие HORIZON_DAYS дней, уведомление за minutesBefore до начала.
-  //    Вне семестра и в праздники — тишина (как в NotificationAgent).
-  if (settings.lessons && input.schedule && input.calendar) {
-    const sem = input.calendar.semesters?.find(
-      (s) => s.semester === input.activeSemester
+  // 1) Пары по дням: ближайшие HORIZON_DAYS дней (общая выборка для
+  //    напоминаний перед парами и утреннего дайджеста). Вне семестра
+  //    и в праздники — тишина (как в NotificationAgent).
+  const sem = input.calendar?.semesters?.find(
+    (s) => s.semester === input.activeSemester
+  )
+  for (let offset = 0; offset <= HORIZON_DAYS; offset++) {
+    const day = new Date(now + offset * DAY)
+    const dayKey = isoDay(day)
+    const inSemester =
+      sem && dayKey >= sem.semester_start && dayKey <= sem.semester_end
+    const isHoliday = sem?.holidays?.some(
+      (h) => dayKey >= h.start && dayKey <= h.end
     )
-    for (let offset = 0; offset <= HORIZON_DAYS; offset++) {
-      const day = new Date(now + offset * DAY)
-      const dayKey = isoDay(day)
-      const inSemester =
-        sem && dayKey >= sem.semester_start && dayKey <= sem.semester_end
-      const isHoliday = sem?.holidays?.some(
-        (h) => dayKey >= h.start && dayKey <= h.end
-      )
-      if (!inSemester || isHoliday) continue
-      const dow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][day.getDay()]
-      const lessons = (input.schedule.schedule || [])
-        .filter((e) => e.day.toLowerCase() === dow)
-        .sort((a, b) => a.start.localeCompare(b.start))
+    if (!inSemester || isHoliday) continue
+    const dow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][day.getDay()]
+    const lessons = (input.schedule?.schedule || [])
+      .filter((e) => e.day.toLowerCase() === dow)
+      .sort((a, b) => a.start.localeCompare(b.start))
+    if (lessons.length === 0) continue
+
+    // 1а) Напоминание за minutesBefore до начала каждой пары.
+    if (settings.lessons) {
       for (const lesson of lessons) {
         const [h, m] = lesson.start.split(':').map(Number)
         if (Number.isNaN(h) || Number.isNaN(m)) continue
@@ -116,13 +147,40 @@ export function computeReminderEvents(input: ReminderInput): ReminderEvent[] {
         ).getTime()
         const fireAt = lessonAt - settings.minutesBefore * 60_000
         if (fireAt <= now || fireAt > horizon) continue
-        const key = `lesson-${isoDay(new Date(lessonAt))}-${lesson.start}`
+        const place = `${lesson.start}${lesson.room ? ` · ${lesson.room}` : ''}`
         events.push({
-          id: hashId(key),
-          title: kk.notifLessonTitle,
-          body: `${lesson.subject_name} · ${lesson.start}${lesson.room ? ` · ${lesson.room}` : ''}`,
+          id: hashId(`lesson-${dayKey}-${lesson.start}`),
+          title: lesson.subject_name,
+          body: `${kk.notifLessonTitle} · ${place}`,
+          largeBody: `${lesson.subject_name} · ${place}`,
+          group: GROUP_LESSONS,
           fireAt,
           channel: CHANNEL_LESSONS,
+        })
+      }
+    }
+
+    // 1б) Утренний дайджест дня: список пар одним тихим уведомлением.
+    if (settings.digest) {
+      const fireAt = new Date(
+        day.getFullYear(),
+        day.getMonth(),
+        day.getDate(),
+        DIGEST_HOUR,
+        DIGEST_MINUTE
+      ).getTime()
+      if (fireAt > now && fireAt <= horizon) {
+        events.push({
+          id: hashId(`digest-${dayKey}`),
+          title: kk.notifDigestTitle(lessons.length),
+          body: kk.notifDigestFirst(lessons[0].start),
+          inboxLines: lessons
+            .slice(0, DIGEST_MAX_LINES)
+            .map((l) => `${l.start} — ${l.subject_name}`),
+          summary: 'Aristos',
+          group: GROUP_DIGEST,
+          fireAt,
+          channel: CHANNEL_DIGEST,
         })
       }
     }
@@ -140,8 +198,10 @@ export function computeReminderEvents(input: ReminderInput): ReminderEvent[] {
       const dueStr = `${isoDay(new Date(due))} ${dueIso.slice(11, 16)}`
       events.push({
         id: hashId(`deadline-${assignment.id}`),
-        title: kk.notifDeadlineTitle,
-        body: `${assignment.title} — ${dueStr}`,
+        title: assignment.title,
+        body: `${kk.notifDeadlineTitle}: ${dueStr}`,
+        largeBody: `${assignment.title} — ${dueStr}`,
+        group: GROUP_DEADLINES,
         fireAt,
         channel: CHANNEL_DEADLINES,
       })
@@ -169,6 +229,10 @@ export async function refreshNativeReminders(
           id: e.id,
           title: e.title,
           body: e.body,
+          largeBody: e.largeBody,
+          inboxLines: e.inboxLines,
+          summary: e.summary,
+          group: e.group,
           channelId: e.channel,
           schedule: Schedule.at(new Date(e.fireAt), false, true),
         })
