@@ -20,11 +20,21 @@ pub struct Installer<R: Runtime>(PluginHandle<R>);
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     PluginBuilder::new("aristos-updater")
         .setup(|app, api| {
+            // Регистрация НЕ фатальна: если Kotlin-плагин не поднялся,
+            // приложение всё равно открывается — install_apk ответит ошибкой
+            // и фронт откатится на скачивание через браузер.
             #[cfg(target_os = "android")]
             {
                 use tauri::Manager as _;
-                let handle = api.register_android_plugin("kz.yessenov.aristos", "UpdaterPlugin")?;
-                app.manage(Installer(handle));
+                match api.register_android_plugin("kz.yessenov.aristos", "UpdaterPlugin") {
+                    Ok(handle) => {
+                        app.manage(Installer(handle));
+                    }
+                    Err(e) => {
+                        // видно в logcat (тег RustStdoutStderr)
+                        eprintln!("aristos-updater: регистрация не удалась: {e}");
+                    }
+                }
             }
             #[cfg(not(target_os = "android"))]
             {
