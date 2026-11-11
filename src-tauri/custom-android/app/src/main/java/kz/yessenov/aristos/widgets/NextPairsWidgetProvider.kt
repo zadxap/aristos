@@ -25,16 +25,18 @@ class NextPairsWidgetProvider : AppWidgetProvider() {
         fun buildViews(context: Context, snap: Snapshot?): RemoteViews {
             val views = WidgetRenderer.root(context, R.layout.widget_list)
             views.removeAllViews(R.id.widget_rows)
+            WidgetRenderer.applyHeader(views, "Aristos")
             if (snap == null) {
-                views.setTextViewText(R.id.widget_title, "Aristos")
                 WidgetRenderer.addTextRow(views, R.id.widget_rows, context, "—", muted = true)
                 return views
             }
             val items = WidgetData.nextLessons(snap, Calendar.getInstance(), 3)
-            views.setTextViewText(
-                R.id.widget_title,
-                items.firstOrNull()?.dayLabel ?: (snap.labels["today"] ?: "Aristos"),
-            )
+            if (items.isNotEmpty()) {
+                WidgetRenderer.applyHeader(
+                    views,
+                    items.first().dayLabel,
+                )
+            }
             if (items.isEmpty()) {
                 WidgetRenderer.addTextRow(
                     views,
@@ -46,11 +48,12 @@ class NextPairsWidgetProvider : AppWidgetProvider() {
             } else {
                 for (item in items) {
                     val room = item.lesson.room?.let { " · $it" } ?: ""
-                    WidgetRenderer.addTextRow(
+                    WidgetRenderer.addEventRow(
                         views,
                         R.id.widget_rows,
                         context,
-                        "${item.lesson.start}–${item.lesson.end} ${item.lesson.name}$room",
+                        "${item.lesson.start}–${item.lesson.end}",
+                        item.lesson.name + room,
                     )
                 }
             }

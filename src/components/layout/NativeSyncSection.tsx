@@ -16,14 +16,9 @@ function stageText(stage: SyncStage): string {
   switch (stage) {
     case 'canvas-courses':
       return kk.syncStageCanvasCourses
-    case 'canvas-assignments':
-      return kk.syncStageCanvasAssignments
     case 'canvas-login':
-      return kk.syncStageLogin
     case 'platonus-login':
       return kk.syncStageLogin
-    case 'platonus-open':
-      return kk.syncStageCanvasCourses // unused fallback
     case 'canvas-apply':
     case 'platonus-apply':
       return kk.syncStageApply

@@ -11,6 +11,8 @@ permissions = [
   "allow-sync-diag",
   "allow-sync-close",
   "allow-sync-payload",
+  "allow-canvas-session-state",
+  "allow-canvas-sync-native",
 ]
 
 [[permission]]
@@ -47,3 +49,13 @@ commands.allow = ["sync_close"]
 identifier = "allow-sync-payload"
 description = "Инжект-скрипты на внешних страницах отдают результат синка (для remote-sync capability)"
 commands.allow = ["sync_payload"]
+
+[[permission]]
+identifier = "allow-canvas-session-state"
+description = "Проверка живой сессии Canvas по кукам webview"
+commands.allow = ["canvas_session_state"]
+
+[[permission]]
+identifier = "allow-canvas-sync-native"
+description = "Нативный Canvas-синк: reqwest с куками webview, без IPC"
+commands.allow = ["canvas_sync_native"]

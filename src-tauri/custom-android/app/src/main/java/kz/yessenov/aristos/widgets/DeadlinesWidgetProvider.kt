@@ -24,13 +24,14 @@ class DeadlinesWidgetProvider : AppWidgetProvider() {
         fun buildViews(context: Context, snap: Snapshot?): RemoteViews {
             val views = WidgetRenderer.root(context, R.layout.widget_list)
             views.removeAllViews(R.id.widget_rows)
+            WidgetRenderer.applyHeader(views, "Aristos")
             if (snap == null) {
-                views.setTextViewText(R.id.widget_title, "Aristos")
                 WidgetRenderer.addTextRow(views, R.id.widget_rows, context, "—", muted = true)
                 return views
             }
-            views.setTextViewText(R.id.widget_title, snap.labels["deadlines"] ?: "Deadlines")
-            val items = WidgetData.upcomingDeadlines(snap, System.currentTimeMillis(), 5)
+            views.removeAllViews(R.id.widget_rows)
+            WidgetRenderer.applyHeader(views, snap.labels["deadlines"] ?: "Deadlines")
+            val items = WidgetData.upcomingDeadlines(snap, System.currentTimeMillis(), 4)
             if (items.isEmpty()) {
                 WidgetRenderer.addTextRow(
                     views,
@@ -42,11 +43,12 @@ class DeadlinesWidgetProvider : AppWidgetProvider() {
             } else {
                 for (dl in items) {
                     val course = if (dl.course.isNotEmpty()) " (${dl.course})" else ""
-                    WidgetRenderer.addTextRow(
+                    WidgetRenderer.addEventRow(
                         views,
                         R.id.widget_rows,
                         context,
-                        "${WidgetData.formatDue(dl.dueAtMillis)} · ${dl.title}$course",
+                        WidgetData.formatDue(dl.dueAtMillis),
+                        dl.title + course,
                     )
                 }
             }

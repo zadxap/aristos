@@ -1,21 +1,25 @@
 /** Нативный синк Canvas/Платонус (только desktop-Tauri) — замена браузерного
- *  расширения. Механика: hidden/видимое webview-окно `harvest` (sync.rs) грузит
- *  внешний сайт; сюда инжектятся самодостаточные скрипты (src/lib/injected/*),
- *  которые делают same-origin fetch / DOM-harvest и отдают результат командой
- *  sync_payload → событие 'sync-payload' → здесь валидация и применение через
- *  useDB().syncCanvas/syncPlatonus (коллбэком из UI). Прогресс — машина-ключи
- *  для i18n, текст собирает SideMenu. */
+ *  расширения.
+ *  Canvas: БЕЗ инжекта и IPC — сессия берётся из cookie-jar webview
+ *  (canvas_session_state / canvas_sync_native на Rust, reqwest с Cookie +
+ *  X-CSRF-Token). Нет/истекла сессия → видимому окну логина, куки персистентны.
+ *  Платонус: скрытое окно + инжект-драйвер (page-side DOM harvest), результат
+ *  — через канал заголовка окна (ARISTOS_D|idx|total|chunk) с подтверждением
+ *  чтения: eval-ом хост ставит window.__ARISTOS_ACK. Работает независимо от
+ *  remote-IPC. Применение — существующие useDB().syncCanvas/syncPlatonus. */
 
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
-import canvasCollectorSrc from './injected/canvas-collector.js?raw'
-import platonusPageSrc from './injected/platonus-page.js?raw'
 import { CANVAS_ORIGIN } from '@/lib/canvas'
-import { PLATONUS_ORIGIN } from '@/lib/platonus'
 import { isCanvasSyncPayload } from '@/lib/canvas'
+import { PLATONUS_ORIGIN } from '@/lib/platonus'
 import { isPlatonusSyncPayload } from '@/lib/platonus'
 import { getSetting, saveSetting } from '@/lib/db'
-import type { CanvasSyncPayload, PlatonusSyncPayload, PlatonusYearRecord } from '@/types'
+import platonusPageSrc from './injected/platonus-page.js?raw'
+import type {
+  CanvasSyncPayload,
+  PlatonusSyncPayload,
+  PlatonusYearRecord,
+} from '@/types'
 
 export interface PlatonusPeriod {
   year: number
@@ -26,78 +30,27 @@ type SyncMessage = { type: string; [key: string]: unknown }
 
 export type SyncStage =
   | 'canvas-courses'
-  | 'canvas-assignments'
   | 'canvas-login'
   | 'canvas-apply'
-  | 'platonus-open'
   | 'platonus-login'
   | 'platonus-period'
   | 'platonus-marks'
   | 'platonus-apply'
 
-// ---- канал сообщений из harvest-окна ----
+let busy = false
 
-let listenerStarted = false
-const queue: SyncMessage[] = []
-type Waiter = {
-  match: (m: SyncMessage) => boolean
-  resolve: (m: SyncMessage) => void
-  reject: (e: Error) => void
-  timer: number
-}
-const waiters: Waiter[] = []
-let onProgress: ((m: SyncMessage) => void) | null = null
-
-function startListener(): void {
-  if (listenerStarted) return
-  listenerStarted = true
-  void listen<string>('sync-payload', (event) => {
-    let msg: SyncMessage
-    try {
-      msg = JSON.parse(event.payload) as SyncMessage
-    } catch {
-      return
-    }
-    if (String(msg.type) === 'progress') {
-      if (onProgress) onProgress(msg)
-      return // прогресс мимолётен — не копим
-    }
-    const wi = waiters.findIndex((w) => w.match(msg))
-    if (wi >= 0) {
-      const [w] = waiters.splice(wi, 1)
-      window.clearTimeout(w.timer)
-      w.resolve(msg)
-      return
-    }
-    queue.push(msg)
-  })
+export function isNativeSyncBusy(): boolean {
+  return busy
 }
 
-function waitMessage(
-  match: (m: SyncMessage) => boolean,
-  timeoutMs: number
-): Promise<SyncMessage> {
-  startListener()
-  return new Promise((resolve, reject) => {
-    const qi = queue.findIndex(match)
-    if (qi >= 0) {
-      const [m] = queue.splice(qi, 1)
-      resolve(m)
-      return
-    }
-    const waiter: Waiter = {
-      match,
-      resolve,
-      reject,
-      timer: 0,
-    }
-    waiter.timer = window.setTimeout(() => {
-      const wi = waiters.indexOf(waiter)
-      if (wi >= 0) waiters.splice(wi, 1)
-      reject(new Error('sync-timeout'))
-    }, timeoutMs)
-    waiters.push(waiter)
-  })
+async function withBusy<T>(fn: () => Promise<T>): Promise<T> {
+  if (busy) throw new Error('sync-already-running')
+  busy = true
+  try {
+    return await fn()
+  } finally {
+    busy = false
+  }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -109,70 +62,11 @@ interface HarvestDiag {
   title: string
 }
 
-/** Ждём сообщение с диагностическим watchdog: раз в ~9 с опрашиваем
- *  sync_diag — инжект-скрипты оставляют в title причины падения IPC
- *  ('ARISTOS_E|...') или breadcrumb 'ARISTOS_INJ'. Так «вечное кручение»
- *  превращается в быструю осмысленную ошибку. */
-async function waitWithDiag(
-  match: (m: SyncMessage) => boolean,
-  timeoutMs: number
-): Promise<SyncMessage> {
-  const deadline = Date.now() + timeoutMs
-  let lastDiag: HarvestDiag | null = null
-  let sawInjection = false
-  while (Date.now() < deadline) {
-    const slice = Math.min(9000, deadline - Date.now())
-    const r = await Promise.race([
-      waitMessage(match, slice).then(
-        (m) => ({ kind: 'msg' as const, m }),
-        () => ({ kind: 'tick' as const })
-      ),
-      sleep(Math.max(1, slice)).then(() => ({ kind: 'tick' as const })),
-    ])
-    if (r.kind === 'msg') return r.m
-    try {
-      lastDiag = await invoke<HarvestDiag>('sync_diag')
-    } catch {
-      lastDiag = null
-    }
-    if (!lastDiag || !lastDiag.url) throw new Error('diag-no-window')
-    if (lastDiag.title.startsWith('ARISTOS_E|')) {
-      throw new Error(lastDiag.title) // причина от инжект-скрипта
-    }
-    if (lastDiag.title.startsWith('ARISTOS_INJ')) sawInjection = true
-    if (!sawInjection && lastDiag.title === 'Aristos Sync') {
-      // скрипт ещё не инжектился / страница не дозагрузилась — ждём дальше
-    }
-  }
-  const diagPart = lastDiag ? ` [diag: url=${lastDiag.url} title=${lastDiag.title}]` : ''
-  throw new Error('sync-timeout' + diagPart)
+function isNeedLogin(err: unknown): boolean {
+  return String((err as Error)?.message || err).includes('need-login')
 }
 
-function driverScript(params: Record<string, unknown>): string {
-  // Параметры подставляются ПЕРЕД телом драйвера — он читает
-  // window.__ARISTOS_PARAMS__ на момент исполнения.
-  return 'window.__ARISTOS_PARAMS__ = ' + JSON.stringify(params) + ';\n' + platonusPageSrc
-}
-
-let busy = false
-
-export function isNativeSyncBusy(): boolean {
-  return busy
-}
-
-async function withBusy<T>(fn: () => Promise<T>): Promise<T> {
-  if (busy) throw new Error('sync-already-running')
-  busy = true
-  queue.length = 0
-  try {
-    return await fn()
-  } finally {
-    busy = false
-    onProgress = null
-  }
-}
-
-// ---- Canvas ----
+// ---- Canvas (нативно: куки webview + reqwest на Rust) ----
 
 export interface CanvasSyncFx {
   onStage: (stage: SyncStage) => void
@@ -180,58 +74,70 @@ export interface CanvasSyncFx {
   apply: (payload: CanvasSyncPayload) => Promise<void>
 }
 
-const CANVAS_MESSAGE_TYPES = ['canvas', 'need-login', 'error']
-
-async function runCanvasCollect(timeoutMs: number): Promise<CanvasSyncPayload> {
-  await invoke('sync_open', { url: CANVAS_ORIGIN + '/', visible: false })
-  await invoke('sync_eval', { js: canvasCollectorSrc })
-  const msg = await waitWithDiag(
-    (m) => CANVAS_MESSAGE_TYPES.includes(String(m.type)),
-    timeoutMs
-  )
-  return parseCanvasMessage(msg)
-}
-
-function parseCanvasMessage(msg: SyncMessage): CanvasSyncPayload {
-  const type = String(msg.type)
-  if (type === 'need-login') throw new Error('need-login')
-  if (type === 'error') throw new Error(String(msg.message || 'canvas-sync-error'))
-  const payload = JSON.parse(String(msg.json)) as CanvasSyncPayload
-  if (!isCanvasSyncPayload(payload)) throw new Error('canvas-invalid-payload')
-  return payload
-}
-
-export async function runCanvasSync(fx: CanvasSyncFx): Promise<{ courses: number; assignments: number }> {
-  return withBusy(async () => {
-    onProgress = (m) => {
-      const stage = String(m.stage)
-      if (stage === 'canvas-courses') fx.onStage('canvas-courses')
-      if (stage === 'canvas-assignments') fx.onStage('canvas-assignments')
+/** Окно логина + поллинг сессии по кукам (появился _csrf_token + API отвечает). */
+async function ensureCanvasSession(): Promise<boolean> {
+  await invoke('sync_open', {
+    url: CANVAS_ORIGIN + '/login/canvas',
+    visible: true,
+  })
+  const deadline = Date.now() + 6 * 60_000
+  while (Date.now() < deadline) {
+    await sleep(1500)
+    const st = await invoke<{ hasSession: boolean }>('canvas_session_state').catch(
+      () => null
+    )
+    if (st?.hasSession) {
+      await invoke('sync_close')
+      return true
     }
+  }
+  await invoke('sync_close')
+  return false
+}
+
+export async function runCanvasSync(
+  fx: CanvasSyncFx
+): Promise<{ courses: number; assignments: number }> {
+  return withBusy(async () => {
     fx.onStage('canvas-courses')
-    let payload: CanvasSyncPayload
-    try {
-      payload = await runCanvasCollect(120_000)
-    } catch (err) {
-      if (String((err as Error).message) !== 'need-login') throw err
-      // окно логина: ждём выхода со страницы /login, потом ретрай
+    // превентивная проверка сессии: если мертва — сразу окно логина,
+    // а не «спиннер до 401»
+    const st = await invoke<{ hasSession: boolean | null }>(
+      'canvas_session_state'
+    ).catch(() => null)
+    if (st && st.hasSession === false) {
       fx.onStage('canvas-login')
-      const ok = await ensureLogin(
-        CANVAS_ORIGIN + '/login/canvas',
-        (url) => !url.includes('/login')
-      )
+      const ok = await ensureCanvasSession()
+      if (!ok) throw new Error('login-timeout')
+      fx.onStage('canvas-courses')
+    }
+
+    let payloadJson: string
+    try {
+      payloadJson = await invoke<string>('canvas_sync_native')
+    } catch (err) {
+      if (!isNeedLogin(err)) throw err
+      // сессия умерла прямо во время синка — окно логина и повтор
+      fx.onStage('canvas-login')
+      const ok = await ensureCanvasSession()
       if (!ok) throw new Error('login-timeout', { cause: err })
       fx.onStage('canvas-courses')
-      payload = await runCanvasCollect(120_000)
+      payloadJson = await invoke<string>('canvas_sync_native')
     }
+
+    const payload = JSON.parse(payloadJson) as CanvasSyncPayload
+    payload.syncedAt = new Date().toISOString()
+    if (!isCanvasSyncPayload(payload)) throw new Error('canvas-invalid-payload')
     fx.onStage('canvas-apply')
     await fx.apply(payload)
-    await invoke('sync_close')
-    return { courses: payload.courses.length, assignments: payload.assignments.length }
+    return {
+      courses: payload.courses.length,
+      assignments: payload.assignments.length,
+    }
   })
 }
 
-// ---- Платонус ----
+// ---- Платонус (инжект-драйвер + title-канал) ----
 
 export interface PlatonusSyncFx {
   onStage: (stage: SyncStage) => void
@@ -241,61 +147,148 @@ export interface PlatonusSyncFx {
   apply: (payload: PlatonusSyncPayload) => Promise<void>
 }
 
-const PLATONUS_MESSAGE_TYPES = [
+/** Читает title harvest-окна и собирает сообщение из чанков
+ *  ARISTOS_D|idx|total|chunk. Подтверждает чтение через eval
+ *  (window.__ARISTOS_ACK), чтобы драйвер переходил к следующему чанку. */
+async function waitPlatonusMessage(
+  match: (m: SyncMessage) => boolean,
+  timeoutMs: number,
+  onProgress: ((m: SyncMessage) => void) | null = null
+): Promise<SyncMessage> {
+  const deadline = Date.now() + timeoutMs
+  let lastTitle = ''
+  let parts = new Map<number, string>()
+  let total: number
+  while (Date.now() < deadline) {
+    await sleep(350)
+    const diag = await invoke<HarvestDiag>('sync_diag').catch(() => null)
+    if (!diag || !diag.url) continue
+    const t = diag.title
+    if (t === lastTitle) continue
+    lastTitle = t
+    if (t.startsWith('ARISTOS_E|')) throw new Error(t)
+    if (!t.startsWith('ARISTOS_D|')) continue
+    const rest = t.slice('ARISTOS_D|'.length)
+    const sep1 = rest.indexOf('|')
+    if (sep1 < 0) continue
+    const idx = parseInt(rest.slice(0, sep1), 10)
+    const rest2 = rest.slice(sep1 + 1)
+    const sep2 = rest2.indexOf('|')
+    if (sep2 < 0) continue
+    const chunkTotal = parseInt(rest2.slice(0, sep2), 10)
+    const chunk = rest2.slice(sep2 + 1)
+    if (!Number.isFinite(idx) || !Number.isFinite(chunkTotal)) continue
+    parts.set(idx, chunk)
+    total = chunkTotal
+    // подтверждаем чтение — драйвер переходит к следующему чанку
+    void invoke('sync_eval', { js: `window.__ARISTOS_ACK=${idx + 1}` }).catch(
+      () => {}
+    )
+    if (total > 0 && parts.size === total) {
+      const full = [...parts.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([, c]) => c)
+        .join('')
+      parts = new Map()
+      lastTitle = ''
+      let msg: SyncMessage
+      try {
+        msg = JSON.parse(full) as SyncMessage
+      } catch {
+        continue
+      }
+      if (match(msg)) return msg
+      if (String(msg.type) === 'progress' && onProgress) onProgress(msg)
+    }
+  }
+  throw new Error('sync-timeout')
+}
+
+function driverScript(params: Record<string, unknown>): string {
+  // Параметры подставляются ПЕРЕД телом драйвера — он читает
+  // window.__ARISTOS_PARAMS__ на момент исполнения.
+  return 'window.__ARISTOS_PARAMS__ = ' + JSON.stringify(params) + ';\n' + platonusPageSrc
+}
+
+export interface PlatonusDiscoverResult {
+  studentID: number
+  periods: PlatonusPeriod[]
+  previewCount: number
+}
+
+const PLATONUS_TYPES = [
   'platonus-discovered',
   'platonus-period',
   'need-login',
   'error',
 ]
 
-/** Найти доступные периоды (studentID + годы/семестры). */
-export async function discoverPlatonus(): Promise<{
-  studentID: number
-  periods: PlatonusPeriod[]
-  previewCount: number
-}> {
+async function discoverPlatonusOnce(): Promise<PlatonusDiscoverResult> {
+  await invoke('sync_open', {
+    url: PLATONUS_ORIGIN + '/student_register',
+    visible: false,
+  })
+  await invoke('sync_eval', { js: driverScript({ mode: 'discover' }) })
+  const msg = await waitPlatonusMessage(
+    (m) => PLATONUS_TYPES.includes(String(m.type)),
+    120_000
+  )
+  const type = String(msg.type)
+  if (type === 'need-login') throw new Error('need-login')
+  if (type === 'error') throw new Error(String(msg.message || 'platonus-error'))
+  const studentID = Number(msg.studentID)
+  const periods = (msg.periods as PlatonusPeriod[]) || []
+  if (!Number.isFinite(studentID) || periods.length === 0) {
+    throw new Error('platonus-no-periods')
+  }
+  await saveSetting('platonusStudentID', studentID)
+  return { studentID, periods, previewCount: Number(msg.previewCount) || 0 }
+}
+
+export async function discoverPlatonus(): Promise<PlatonusDiscoverResult> {
   return withBusy(async () => {
-    fxBindProgress(null)
     for (let attempt = 0; attempt < 2; attempt++) {
-      await invoke('sync_open', { url: PLATONUS_ORIGIN + '/student_register', visible: false })
-      await invoke('sync_eval', { js: driverScript({ mode: 'discover' }) })
-      const msg = await waitWithDiag(
-        (m) => PLATONUS_MESSAGE_TYPES.includes(String(m.type)),
-        90_000
-      )
-      const type = String(msg.type)
-      if (type === 'need-login') {
+      try {
+        const res = await discoverPlatonusOnce()
+        await invoke('sync_close')
+        return res
+      } catch (err) {
+        if (!isNeedLogin(err)) throw err
         const ok = await ensurePlatonusLogin()
-        if (!ok) throw new Error('login-timeout')
-        continue
-      }
-      if (type === 'error') throw new Error(String(msg.message || 'platonus-error'))
-      const studentID = Number(msg.studentID)
-      const periods = (msg.periods as PlatonusPeriod[]) || []
-      if (!Number.isFinite(studentID) || periods.length === 0) {
-        throw new Error('platonus-no-periods')
-      }
-      await saveSetting('platonusStudentID', studentID)
-      await invoke('sync_close')
-      return {
-        studentID,
-        periods,
-        previewCount: Number(msg.previewCount) || 0,
+        if (!ok) throw new Error('login-timeout', { cause: err })
       }
     }
     throw new Error('platonus-no-periods')
   })
 }
 
-function fxBindProgress(fx: PlatonusSyncFx | null): void {
-  onProgress = fx
-    ? (m) => {
-        const stage = String(m.stage)
-        if (stage === 'platonus-marks') {
-          fx.onMarks(Number(m.year), Number(m.term), Number(m.idx), Number(m.total))
-        }
+/** Видимое окно логина Платонуса (SSO через id.yu.edu.kz) + поллинг URL. */
+async function ensurePlatonusLogin(): Promise<boolean> {
+  await invoke('sync_open', { url: PLATONUS_ORIGIN + '/', visible: true })
+  const deadline = Date.now() + 6 * 60_000
+  let stableSeen = false
+  while (Date.now() < deadline) {
+    await sleep(1500)
+    const url = String(await invoke<string>('sync_url').catch(() => ''))
+    const u = url.toLowerCase()
+    const done =
+      u.includes('platonus.yu.edu.kz') &&
+      !u.includes('id.yu.edu.kz') &&
+      !u.includes('login') &&
+      !u.includes('oauth')
+    if (done) {
+      // SSO-редиректы мигают промежуточными адресами — ждём два стабильных опроса
+      if (stableSeen) {
+        await invoke('sync_close')
+        return true
       }
-    : null
+      stableSeen = true
+      continue
+    }
+    stableSeen = false
+  }
+  await invoke('sync_close')
+  return false
 }
 
 /** Импорт выбранных периодов (оценки по дням собираются кликом по карточкам). */
@@ -304,11 +297,9 @@ export async function runPlatonusSync(
   fx: PlatonusSyncFx
 ): Promise<number> {
   return withBusy(async () => {
-    fxBindProgress(fx)
     let studentID = await getSetting<number | null>('platonusStudentID', null)
     if (!Number.isFinite(studentID as number)) {
-      // студентID неизвестен — тихо прогоняем discover
-      const discovered = await discoverPlatonusUnsafe()
+      const discovered = await discoverPlatonus()
       studentID = discovered.studentID
     }
 
@@ -329,9 +320,14 @@ export async function runPlatonusSync(
         visible: false,
       })
       await invoke('sync_eval', { js: driverScript({ mode: 'harvest', year, term }) })
-      const msg = await waitWithDiag(
-        (m) => PLATONUS_MESSAGE_TYPES.includes(String(m.type)),
-        15 * 60_000
+      const msg = await waitPlatonusMessage(
+        (m) => PLATONUS_TYPES.includes(String(m.type)),
+        20 * 60_000,
+        (m) => {
+          if (String(m.stage) === 'platonus-marks') {
+            fx.onMarks(Number(m.year), Number(m.term), Number(m.idx), Number(m.total))
+          }
+        }
       )
       const type = String(msg.type)
       if (type === 'need-login') {
@@ -341,8 +337,7 @@ export async function runPlatonusSync(
         continue
       }
       if (type === 'error') throw new Error(String(msg.message || 'platonus-error'))
-      const record = msg.record as PlatonusYearRecord
-      records.push(record)
+      records.push(msg.record as PlatonusYearRecord)
     }
 
     if (records.length === 0) throw new Error('platonus-empty')
@@ -357,74 +352,5 @@ export async function runPlatonusSync(
     await fx.apply(payload)
     await invoke('sync_close')
     return records.length
-  })
-}
-
-/** discover без собственного busy-гейта (вызывается изнутри runPlatonusSync). */
-async function discoverPlatonusUnsafe(): Promise<{
-  studentID: number
-  periods: PlatonusPeriod[]
-}> {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    await invoke('sync_open', { url: PLATONUS_ORIGIN + '/student_register', visible: false })
-    await invoke('sync_eval', { js: driverScript({ mode: 'discover' }) })
-    const msg = await waitWithDiag(
-      (m) => PLATONUS_MESSAGE_TYPES.includes(String(m.type)),
-      90_000
-    )
-    const type = String(msg.type)
-    if (type === 'need-login') {
-      const ok = await ensurePlatonusLogin()
-      if (!ok) throw new Error('login-timeout')
-      continue
-    }
-    if (type === 'error') throw new Error(String(msg.message || 'platonus-error'))
-    const studentID = Number(msg.studentID)
-    if (!Number.isFinite(studentID)) throw new Error('platonus-no-periods')
-    await saveSetting('platonusStudentID', studentID)
-    return { studentID, periods: (msg.periods as PlatonusPeriod[]) || [] }
-  }
-  throw new Error('platonus-no-periods')
-}
-
-// ---- логин ----
-
-/** Видимое окно логина + поллинг URL до ухода со страницы входа. */
-async function ensureLogin(
-  loginUrl: string,
-  isDone: (url: string) => boolean
-): Promise<boolean> {
-  await invoke('sync_open', { url: loginUrl, visible: true })
-  const deadline = Date.now() + 6 * 60_000
-  let stableSeen = false
-  while (Date.now() < deadline) {
-    await sleep(1500)
-    const url = String(await invoke<string>('sync_url'))
-    if (isDone(url)) {
-      // SSO-редиректы мигают промежуточными адресами — ждём два стабильных опроса
-      if (stableSeen) {
-        await invoke('sync_close')
-        return true
-      }
-      stableSeen = true
-      continue
-    }
-    stableSeen = false
-  }
-  await invoke('sync_close')
-  return false
-}
-
-async function ensurePlatonusLogin(): Promise<boolean> {
-  // SSO: platonus уводит на id.yu.edu.kz; вход завершён, когда вернулись на
-  // platonus.yu.edu.kz вне страницы входа
-  return ensureLogin(PLATONUS_ORIGIN + '/', (url) => {
-    const u = url.toLowerCase()
-    return (
-      u.includes('platonus.yu.edu.kz') &&
-      !u.includes('id.yu.edu.kz') &&
-      !u.includes('login') &&
-      !u.includes('oauth')
-    )
   })
 }

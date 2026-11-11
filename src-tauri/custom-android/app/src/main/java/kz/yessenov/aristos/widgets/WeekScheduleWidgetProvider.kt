@@ -24,12 +24,12 @@ class WeekScheduleWidgetProvider : AppWidgetProvider() {
         fun buildViews(context: Context, snap: Snapshot?): RemoteViews {
             val views = WidgetRenderer.root(context, R.layout.widget_week)
             views.removeAllViews(R.id.widget_days)
+            WidgetRenderer.applyHeader(views, "Aristos")
             if (snap == null) {
-                views.setTextViewText(R.id.widget_title, "Aristos")
                 WidgetRenderer.addTextRow(views, R.id.widget_days, context, "—", muted = true)
                 return views
             }
-            views.setTextViewText(R.id.widget_title, snap.labels["schedule"] ?: "Schedule")
+            WidgetRenderer.applyHeader(views, snap.labels["schedule"] ?: "Schedule")
             var any = false
             for (day in WidgetData.weekOrder()) {
                 val lessons = WidgetData.lessonsForDay(snap, day)
@@ -39,8 +39,9 @@ class WeekScheduleWidgetProvider : AppWidgetProvider() {
                 dayViews.setTextViewText(R.id.widget_day_name, snap.days[day] ?: day)
                 dayViews.removeAllViews(R.id.widget_day_pairs)
                 for (lesson in lessons) {
-                    val rv = RemoteViews(context.packageName, R.layout.widget_row_text)
-                    rv.setTextViewText(R.id.widget_row_text, "${lesson.start} ${lesson.name}")
+                    val rv = RemoteViews(context.packageName, R.layout.widget_row_event)
+                    rv.setTextViewText(R.id.widget_row_time, lesson.start)
+                    rv.setTextViewText(R.id.widget_row_name, lesson.name)
                     dayViews.addView(R.id.widget_day_pairs, rv)
                 }
                 views.addView(R.id.widget_days, dayViews)

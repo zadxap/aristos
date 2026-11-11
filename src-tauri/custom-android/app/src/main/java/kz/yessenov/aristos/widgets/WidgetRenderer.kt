@@ -23,6 +23,12 @@ object WidgetRenderer {
         return views
     }
 
+    /** Шапка: иконка приложения + акцентный заголовок. */
+    fun applyHeader(views: RemoteViews, title: String) {
+        views.setImageViewResource(R.id.widget_icon, R.mipmap.ic_launcher)
+        views.setTextViewText(R.id.widget_title, title)
+    }
+
     /** Одна строка-текст. muted — приглушённый цвет (пустые состояния). */
     fun addTextRow(
         views: RemoteViews,
@@ -34,6 +40,20 @@ object WidgetRenderer {
         val rv = RemoteViews(context.packageName, R.layout.widget_row_text)
         rv.setTextViewText(R.id.widget_row_text, text)
         if (muted) rv.setTextColor(R.id.widget_row_text, 0xFF94A3B8.toInt()) // slate-400
+        views.addView(containerId, rv)
+    }
+
+    /** Двухколонная строка: время/дата (акцент) + название. */
+    fun addEventRow(
+        views: RemoteViews,
+        containerId: Int,
+        context: Context,
+        time: String,
+        name: String,
+    ) {
+        val rv = RemoteViews(context.packageName, R.layout.widget_row_event)
+        rv.setTextViewText(R.id.widget_row_time, time)
+        rv.setTextViewText(R.id.widget_row_name, name)
         views.addView(containerId, rv)
     }
 }

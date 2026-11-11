@@ -4,6 +4,7 @@
 //! Android-виджетов пишет write_widget_data; нативный синк Canvas/Платонус
 //! живёт в sync.rs (скрытые webview + инжект-скрипты + IPC).
 
+pub mod canvas;
 pub mod sync;
 
 /// JS передаёт JSON-снапшот (src/lib/widget-snapshot.ts). На Android кладём
@@ -48,6 +49,8 @@ pub fn run() {
             sync::sync_diag,
             sync::sync_close,
             sync::sync_payload,
+            canvas::canvas_session_state,
+            canvas::canvas_sync_native,
         ])
         .run(tauri::generate_context!())
         .expect("ошибка запуска tauri-приложения")

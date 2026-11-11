@@ -10,18 +10,31 @@
 
   const P = window.__ARISTOS_PARAMS__ || {}
 
-  // Breadcrumb для диагностики (см. canvas-collector.js)
-  try { document.title = 'ARISTOS_INJ' } catch (_) { /* ignore */ }
-
+  // Доставка результата — канал заголовка окна (title): ARISTOS_D|idx|total|chunk.
+  // Host подтверждает чтение eval-ом (window.__ARISTOS_ACK = прочитано чанков).
+  // Single-chunk сообщения (прогресс, need-login, discover) идут без ACK —
+  // драйвер всё равно молчит до следующего emit, host успевает прочитать.
+  // IPC-путь убран: remote-IPC оказался ненадёжен, title работает всегда,
+  // где работает сам инжект.
   function emit(msg) {
-    try {
-      window.__TAURI__.core.invoke('sync_payload', { json: JSON.stringify(msg) })
-    } catch (err) {
-      try {
-        document.title = 'ARISTOS_E|' + String((err && err.message) || err).slice(0, 120)
-      } catch (_) { /* ignore */ }
-      console.warn('[Aristos] IPC недоступен', err)
+    const payload = JSON.stringify(msg)
+    const chunks = payload.match(/[\s\S]{1,1400}/g) || ['']
+    if (chunks.length === 1) {
+      document.title = 'ARISTOS_D|0|1|' + chunks[0]
+      return Promise.resolve()
     }
+    return (async () => {
+      for (let i = 0; i < chunks.length; i++) {
+        document.title = 'ARISTOS_D|' + i + '|' + chunks.length + '|' + chunks[i]
+        const deadline = Date.now() + 15000
+        while ((window.__ARISTOS_ACK || -1) <= i && Date.now() < deadline) {
+          await sleep(100)
+        }
+        if ((window.__ARISTOS_ACK || -1) <= i) {
+          throw new Error('title-ack-timeout')
+        }
+      }
+    })()
   }
 
   function sleep(ms) {
@@ -312,7 +325,7 @@
     await waitForJournal()
     const parsed = cardParser()
     if (!parsed.studentID) {
-      emit({ type: 'need-login', kind: 'platonus' })
+      await emit({ type: 'need-login', kind: 'platonus' })
       return
     }
     const periods = []
@@ -321,7 +334,7 @@
         if (term > 0) periods.push({ year, term }) // extra terms (-1/-2) — по запросу позже
       }
     }
-    emit({ type: 'platonus-discovered', studentID: parsed.studentID, periods, previewCount: parsed.subjects.length })
+    await emit({ type: 'platonus-discovered', studentID: parsed.studentID, periods, previewCount: parsed.subjects.length })
   }
 
   async function harvest() {
@@ -330,13 +343,13 @@
     await waitForJournal()
     const parsed = cardParser()
     if (!parsed.studentID) {
-      emit({ type: 'need-login', kind: 'platonus' })
+      await emit({ type: 'need-login', kind: 'platonus' })
       return
     }
     const subjects = parsed.subjects || []
     for (let i = 0; i < subjects.length; i++) {
       const subject = subjects[i]
-      emit({
+      await emit({
         type: 'progress',
         stage: 'platonus-marks',
         year,
@@ -351,7 +364,7 @@
       }
       subject.marks = await cardMarks(subject.subjectID, year)
     }
-    emit({
+    await emit({
       type: 'platonus-period',
       record: {
         id: year + '-' + term,
@@ -368,7 +381,7 @@
       if (P.mode === 'discover') await discover()
       else await harvest()
     } catch (err) {
-      emit({ type: 'error', message: String((err && err.message) || err) })
+      await emit({ type: 'error', message: String((err && err.message) || err) })
     }
   })()
 })()
