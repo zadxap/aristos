@@ -1,9 +1,11 @@
 /** Канал обновлений приложения.
- *  Android: воркер отдаёт {version, apkUrl} — сравниваем и открываем ссылку
- *  в системном браузере (пользователь ставит APK поверх — подпись стабильная).
+ *  Android: воркер отдаёт {version, apkUrl} — сравниваем, скачиваем APK в
+ *  кеш приложения (Rust) и открываем системный установщик напрямую
+ *  (UpdaterPlugin → FileProvider); подпись стабильная — ставится поверх.
  *  Desktop: официальный tauri-plugin-updater — проверка по latest.json на
  *  воркере, подпись minisign; downloadAndInstall + relaunch. */
 
+import { invoke } from '@tauri-apps/api/core'
 import { getVersion } from '@tauri-apps/api/app'
 import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
@@ -79,9 +81,22 @@ export async function installDesktopUpdate(): Promise<void> {
   await relaunch()
 }
 
-/** Mobile: открыть APK в системном браузере на скачивание. */
-export async function downloadAndroidUpdate(apkUrl: string): Promise<void> {
-  await openUrl(apkUrl)
+/** Mobile: скачать APK в кеш приложения (download_update, reqwest в Rust) и
+ *  вызвать системный установщик напрямую (install_apk → UpdaterPlugin →
+ *  FileProvider content:// URI). Фоллбек на браузер — если прямой путь
+ *  не сработал (нестандартные оболочки, нет установщика). */
+export async function installAndroidUpdate(
+  apkUrl: string
+): Promise<"install-started" | "need-permission" | "fallback-browser"> {
+  try {
+    const path = await invoke<string>("download_update", { url: apkUrl })
+    const res = await invoke<{ status?: string } | null>("install_apk", { path })
+    if (res?.status === "need-permission") return "need-permission"
+    return "install-started"
+  } catch {
+    await openUrl(apkUrl)
+    return "fallback-browser"
+  }
 }
 
 export async function currentAppVersion(): Promise<string | null> {

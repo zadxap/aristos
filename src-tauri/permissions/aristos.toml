@@ -13,6 +13,8 @@ permissions = [
   "allow-sync-payload",
   "allow-canvas-session-state",
   "allow-canvas-sync-native",
+  "allow-download-update",
+  "allow-install-apk",
 ]
 
 [[permission]]
@@ -59,3 +61,13 @@ commands.allow = ["canvas_session_state"]
 identifier = "allow-canvas-sync-native"
 description = "Нативный Canvas-синк: reqwest с куками webview, без IPC"
 commands.allow = ["canvas_sync_native"]
+
+[[permission]]
+identifier = "allow-download-update"
+description = "Скачивает APK обновления в кеш приложения (прямая установка на Android)"
+commands.allow = ["download_update"]
+
+[[permission]]
+identifier = "allow-install-apk"
+description = "Запускает системный установщик APK (UpdaterPlugin, Android)"
+commands.allow = ["install_apk"]

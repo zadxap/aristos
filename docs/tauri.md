@@ -252,6 +252,25 @@ Web Notification API (через Service Worker, если доступен). П�
 `public/icons/notification-badge.png` (белый глиф на прозрачном; прежний
 непрозрачный `icon-192.png` Android рисовал белым квадратом).
 
+### 4.4 Канал обновлений (src/lib/app-update.ts)
+
+- **Desktop** — `tauri-plugin-updater`: `latest.json` на воркере
+  (endpoint/pubkey в `tauri.conf.json`), `downloadAndInstall` + relaunch.
+- **Android** — апдейтов «без установки» не бывает: любое обновление вне
+  магазина — это установка APK поверх (та же подпись — данные сохраняются).
+  Схема «в один тап»: баннер в UpdateSection → `installAndroidUpdate` →
+  команда `download_update` (reqwest → `app_cache_dir/apk/*.apk`) → команда
+  `install_apk` → Kotlin-плагин `UpdaterPlugin` (`register_android_plugin`,
+  custom-android) → FileProvider `${applicationId}.aristos.fileprovider`
+  (paths: `@xml/aristos_file_paths`, cache/apk) → ACTION_VIEW
+  `application/vnd.android.package-archive` → системный установщик.
+  Разрешение `REQUEST_INSTALL_PACKAGES` выдаётся пользователем один раз:
+  если не выдано, плагин открывает системную страницу этого приложения в
+  настройках и отвечает `need-permission` (статус показывается в UI, тап —
+  повтор). Фоллбек при отказе прямого пути — открытие APK-URL в браузере,
+  как раньше. Баннер появляется только когда версия на канале строго больше
+  установленной (`isNewer`) — релиз без bump'а версии телефон не увидит.
+
 Рефреш-триггеры (мобильная ветка `NotificationAgent`): открытие приложения,
 visibilitychange, каждые 6 ч, после синков, смена настроек уведомлений.
 

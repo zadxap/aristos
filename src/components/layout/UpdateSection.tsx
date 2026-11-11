@@ -4,7 +4,7 @@ import { isTauri } from '@/lib/tauri'
 import {
   checkAppUpdate,
   currentAppVersion,
-  downloadAndroidUpdate,
+  installAndroidUpdate,
   installDesktopUpdate,
   type AppUpdateInfo,
 } from '@/lib/app-update'
@@ -41,8 +41,15 @@ export function UpdateSection() {
     setBusy(true)
     try {
       if (update.apkUrl) {
-        await downloadAndroidUpdate(update.apkUrl)
-        setStatus(kk.updateDownloadHint)
+        setStatus(kk.updateDownloading)
+        const result = await installAndroidUpdate(update.apkUrl)
+        setStatus(
+          result === "need-permission"
+            ? kk.updatePermHint
+            : result === "fallback-browser"
+              ? kk.updateBrowserHint
+              : kk.updateDownloadHint
+        )
       } else {
         setStatus(kk.updateInstalling)
         await installDesktopUpdate() // перезапускает приложение

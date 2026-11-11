@@ -16,6 +16,8 @@
     "allow-sync-diag",
     "allow-sync-close",
     "allow-canvas-session-state",
-    "allow-canvas-sync-native"
+    "allow-canvas-sync-native",
+    "allow-download-update",
+    "allow-install-apk"
   ]
 }

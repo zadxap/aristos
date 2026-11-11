@@ -5,6 +5,7 @@
 //! живёт в sync.rs (скрытые webview + инжект-скрипты + IPC).
 
 pub mod canvas;
+pub mod install;
 pub mod sync;
 
 /// JS передаёт JSON-снапшот (src/lib/widget-snapshot.ts). На Android кладём
@@ -41,8 +42,11 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(install::init())
         .invoke_handler(tauri::generate_handler![
             write_widget_data,
+            install::download_update,
+            install::install_apk,
             sync::sync_open,
             sync::sync_eval,
             sync::sync_url,

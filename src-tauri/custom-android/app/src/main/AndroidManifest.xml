@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Прямая установка обновления: скачанный APK открывается системным
+         установщиком; право выдаётся пользователем один раз в настройках. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <uses-feature
         android:name="android.software.leanback"
@@ -75,6 +78,19 @@
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- Собственный провайдер для прямой установки APK (UpdaterPlugin):
+             свои пути (@xml/aristos_file_paths) и authority, чтобы не
+             конфликтовать с генерируемым ${applicationId}.fileprovider -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.aristos.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/aristos_file_paths" />
         </provider>
     </application>
 </manifest>

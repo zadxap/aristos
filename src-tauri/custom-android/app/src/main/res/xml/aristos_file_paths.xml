@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Пути собственного FileProvider (${applicationId}.aristos.fileprovider):
+     сюда install.rs кладёт скачанный APK. Отдельный провайдер (а не
+     переопределение генерируемого file_paths.xml) — оверлей копируется
+     поверх gen/android файлом, и xml с другим именем ничего не ломает. -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="apk" path="apk/" />
+</paths>
