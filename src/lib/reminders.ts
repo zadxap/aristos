@@ -13,6 +13,7 @@ import {
   sendNotification,
 } from '@tauri-apps/plugin-notification'
 import { isTauriMobile } from '@/lib/tauri'
+import { effectiveDeadline } from '@/lib/canvas'
 import { loadNotifSettings } from '@/lib/notifications'
 import { kk } from '@/i18n'
 import type { AcadCalendar, CanvasAssignment } from '@/types'
@@ -127,14 +128,16 @@ export function computeReminderEvents(input: ReminderInput): ReminderEvent[] {
     }
   }
 
-  // 2) Дедлайны Canvas: не сданные, за 24 часа до due_at (если уже ближе — сразу).
+  // 2) Дедлайны Canvas: не сданные, за 24 часа до эффективного дедлайна
+  //    (Срок → «Доступно до»; если уже ближе — сразу).
   if (settings.deadlines) {
     for (const assignment of input.canvasAssignments ?? []) {
-      if (!assignment.due_at || assignment.submitted_at) continue
-      const due = Date.parse(assignment.due_at)
+      const dueIso = effectiveDeadline(assignment)
+      if (!dueIso || assignment.submitted_at) continue
+      const due = Date.parse(dueIso)
       if (Number.isNaN(due) || due <= now || due > horizon) continue
       const fireAt = Math.max(now + 60_000, due - DAY)
-      const dueStr = `${isoDay(new Date(due))} ${assignment.due_at.slice(11, 16)}`
+      const dueStr = `${isoDay(new Date(due))} ${dueIso.slice(11, 16)}`
       events.push({
         id: hashId(`deadline-${assignment.id}`),
         title: kk.notifDeadlineTitle,

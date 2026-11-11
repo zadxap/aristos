@@ -1,5 +1,6 @@
 import type { AcadCalendar, CanvasAssignment, CanvasCourse, PlatonusYearRecord, Subject } from '@/types'
-import { computeCourseGrades, titleWeekNumber } from '@/lib/grade-scheme'
+import { assignmentWeek, computeCourseGrades } from '@/lib/grade-scheme'
+import { effectiveDeadline } from '@/lib/canvas'
 
 export interface AdvisorContextInput {
   activeCourse: number
@@ -34,15 +35,17 @@ export function buildAdvisorContext(input: AdvisorContextInput): string {
   }
 
   // Individual graded/missing works — so the AI can point at EXACT low scores
+  // неделя работы — общий assignmentWeek (календарная неделя дедлайна,
+  // номер из названия только без даты: «БӨЖ №1» с «Доступно до 27.09» = 4-апта)
   const workLines: string[] = []
   for (const course of canvasCourses) {
     const works = canvasAssignments
       .filter((a) => a.course_id === course.id && (a.graded || a.missing))
-      .sort((a, b) => (a.due_at ?? '').localeCompare(b.due_at ?? ''))
+      .sort((a, b) => (effectiveDeadline(a) ?? '').localeCompare(effectiveDeadline(b) ?? ''))
     if (works.length === 0) continue
     workLines.push(`- ${course.code}:`)
     for (const item of works) {
-      const week = titleWeekNumber(item.title)
+      const week = assignmentWeek(item, semester)
       const weekLabel = week !== null ? `${week}-апта ` : ''
       const mark = item.graded ? `${item.score ?? 0}/${item.points_possible}` : 'нет сдачи'
       const flag = item.missing && !item.graded ? ' (ПРОПУЩЕНО)' : ''
@@ -57,20 +60,23 @@ export function buildAdvisorContext(input: AdvisorContextInput): string {
   // Upcoming deadlines (nearest 10)
   const now = Date.now()
   const upcoming = canvasAssignments
-    .filter((a) => a.due_at && new Date(a.due_at).getTime() >= now && !a.graded)
-    .sort((a, b) => (a.due_at ?? '').localeCompare(b.due_at ?? ''))
+    .filter((a) => effectiveDeadline(a) && new Date(effectiveDeadline(a)!).getTime() >= now && !a.graded)
+    .sort((a, b) => (effectiveDeadline(a) ?? '').localeCompare(effectiveDeadline(b) ?? ''))
     .slice(0, 10)
   if (upcoming.length > 0) {
     lines.push('\n## Ближайшие дедлайны:')
     for (const item of upcoming) {
       const course = canvasCourses.find((c) => c.id === item.course_id)
-      lines.push(`- ${new Date(item.due_at!).toLocaleDateString('ru-RU')} — ${item.title} (${course?.code ?? '?'}, ${item.points_possible} балл.)`)
+      lines.push(`- ${new Date(effectiveDeadline(item)!).toLocaleDateString('ru-RU')} — ${item.title} (${course?.code ?? '?'}, ${item.points_possible} балл.)`)
     }
   }
 
   // Overdue & missing counts
   const missing = canvasAssignments.filter((a) => a.missing && !a.graded).length
-  const overdue = canvasAssignments.filter((a) => a.due_at && new Date(a.due_at) < new Date() && !a.graded && !a.submitted_at).length
+  const overdue = canvasAssignments.filter((a) => {
+    const due = effectiveDeadline(a)
+    return due && new Date(due) < new Date() && !a.graded && !a.submitted_at
+  }).length
   if (missing > 0 || overdue > 0) {
     lines.push(`\n## Проблемы: пропущено (missing): ${missing}, просрочено без сдачи: ${overdue}`)
   }

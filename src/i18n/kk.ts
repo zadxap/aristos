@@ -140,7 +140,8 @@ export const kkBase = {
   syncPlatonusNoPeriods:
     "Кезеңдер табылмады — Платонусқа кіріп, «Журнал» бөлімін бір рет ашыңыз",
   syncPlatonusEmpty: "Барлық таңдалған кезеңдерде журнал бос",
-  syncFailRaw: (msg: string): string => `Синк қатесі: ${msg}`,
+    syncWarnScoresMissing: "балдар жүктелмеді — Canvas-синкті қайталаңыз",
+syncFailRaw: (msg: string): string => `Синк қатесі: ${msg}`,
   updateSection: "Жаңарту",
   updateVersion: "Нұсқа",
   updateAvailable: "Жаңа нұсқа қолжетімді: {v}",
@@ -600,6 +601,10 @@ export const kkBase = {
   gradesNoCoursesForSemester:
     "Осы курс/семестрге байланыстырылған Canvas курстары жоқ — «Мерзімдер» бетіндегі «Курстарды байланыстыру» арқылы байланыстырыңыз",
   canvasGrades: "Canvas бағалары",
+  canvasComputedScoreHint:
+    "≈ — есептелген баға (тапсырмалар балдарынан): Canvas қорытындысы енді API-де берілмейді, бағалар сыртқы құралға (LTI) көшті",
+  canvasPlatonusScoreHint:
+    "Рейтинг допуска — Платонус журналынан: вуз РК мәндерін LTI құралдан Платонусқа ресми түрде жібереді",
   canvasRecentGraded: "Соңғы бағаланған жұмыстар",
   canvasAllCourses: "Барлық курстар",
   outOfSemesterNote:

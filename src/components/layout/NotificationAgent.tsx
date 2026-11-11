@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { useAristosDB } from "@/context/DBContext"
 import { kk } from "@/i18n"
+import { effectiveDeadline } from "@/lib/canvas"
 import { loadNotifSettings, notifyOncePerDay } from "@/lib/notifications"
 import { refreshNativeReminders } from "@/lib/reminders"
 import { pushWidgetSnapshot } from "@/lib/widget-snapshot"
@@ -92,14 +93,15 @@ export function NotificationAgent() {
         }
       }
 
-      // 2) Дедлайны Canvas: не сданные, со сроком в ближайшие 48 часов
+      // 2) Дедлайны Canvas: не сданные, со сроком (или «Доступно до») в ближайшие 48 часов
       if (settings.deadlines) {
         const horizon = Date.now() + 48 * MINUTE
         for (const assignment of canvasAssignments ?? []) {
-          if (!assignment.due_at || assignment.submitted_at) continue
-          const due = Date.parse(assignment.due_at)
+          const dueIso = effectiveDeadline(assignment)
+          if (!dueIso || assignment.submitted_at) continue
+          const due = Date.parse(dueIso)
           if (Number.isNaN(due) || due <= Date.now() || due > horizon) continue
-          const dueStr = `${isoDay(new Date(due))} ${assignment.due_at.slice(11, 16)}`
+          const dueStr = `${isoDay(new Date(due))} ${dueIso.slice(11, 16)}`
           void notifyOncePerDay(
             `deadline-${assignment.id}`,
             todayKey,

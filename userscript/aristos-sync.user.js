@@ -67,29 +67,83 @@
   }
 
   // Overall course grades live on the enrollments endpoint; some Canvas instances
-  // don't return them via courses?include[]=total_scores.
-  async function fetchGradeMap() {
+  // don't return them via courses?include[]=total_scores. Запрос «мягкий»
+  // (падение не валит синк), поэтому ретраим до 3 раз — и при ошибке, и при
+  // 200-пустышке; после этого последний шанс — per-course enrollments.
+  async function fetchGradeMap(courseIds = []) {
     const map = new Map()
+    const parseScore = (raw) => {
+      if (typeof raw === 'number') return raw
+      if (raw === null || raw === undefined || raw === '') return null
+      const n = Number(raw)
+      return Number.isFinite(n) ? n : null
+    }
+    const delay = (ms) => new Promise((r) => setTimeout(r, ms))
+    let lastErr = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await delay(1500 * attempt)
+      try {
+        const enrollments = await apiAll('/api/v1/users/self/enrollments?include[]=total_scores&per_page=100')
+        for (const e of enrollments) {
+          if (!e || !e.course_id) continue
+          const g = e.grades || {}
+          map.set(e.course_id, {
+            current_score: parseScore(g.current_score),
+            current_grade: typeof g.current_grade === 'string' ? g.current_grade : null,
+          })
+        }
+        if (map.size > 0) return map
+        lastErr = new Error('enrollments: 200 без оценок')
+        const e0 = enrollments[0]
+        console.warn(
+          '[Aristos] enrollments response shape:',
+          JSON.stringify({
+            len: enrollments.length,
+            sampleKeys: e0 ? Object.keys(e0) : null,
+            gradesKeys: e0 && e0.grades ? Object.keys(e0.grades) : null,
+            type: e0 ? e0.type : null,
+            state: e0 ? e0.enrollment_state : null,
+            currentScore: e0 && e0.grades ? e0.grades.current_score : null,
+          }),
+        )
+      } catch (err) {
+        lastErr = err
+      }
+    }
+    // последний шанс: per-course enrollments
     try {
-      const enrollments = await apiAll('/api/v1/users/self/enrollments?include[]=total_scores&per_page=100')
-      for (const e of enrollments) {
-        if (!e || !e.course_id) continue
-        const g = e.grades || {}
-        map.set(e.course_id, {
-          current_score: typeof g.current_score === 'number' ? g.current_score : null,
-          current_grade: typeof g.current_grade === 'string' ? g.current_grade : null,
-        })
+      for (const id of courseIds) {
+        const ens = await apiAll('/api/v1/courses/' + id + '/enrollments?include[]=total_scores&per_page=100')
+        for (const e of ens) {
+          if (!e || e.course_id !== id) continue
+          const g = e.grades || {}
+          const score = parseScore(g.current_score)
+          if (score !== null) {
+            map.set(id, {
+              current_score: score,
+              current_grade: typeof g.current_grade === 'string' ? g.current_grade : null,
+            })
+            break
+          }
+        }
+      }
+      if (map.size > 0) {
+        console.warn('[Aristos] self/enrollments failed, rescued from per-course enrollments for', map.size, 'courses')
+        return map
       }
     } catch (err) {
-      console.warn('[Aristos] enrollments fetch failed, course scores will be empty', err)
+      console.warn('[Aristos] per-course enrollments fallback failed too', err)
     }
+    console.warn('[Aristos] enrollments failed after retries and per-course fallback, course scores will be empty', lastErr)
     return map
   }
 
   async function collectPayload() {
     setUi('syncing', 'Курсы...')
-    const rawCourses = await apiAll('/api/v1/courses?enrollment_state=active&include[]=total_scores&per_page=100')
-    const gradeMap = await fetchGradeMap()
+    // include[]=enrollments — явно: grades курса живут в c.enrollments[0].grades,
+    // не полагаемся на неявное поведение Canvas при include[]=total_scores
+    const rawCourses = await apiAll('/api/v1/courses?enrollment_state=active&include[]=total_scores&include[]=enrollments&per_page=100')
+    const gradeMap = await fetchGradeMap(rawCourses.map((c) => c.id))
 
     const courses = rawCourses.map((c) => {
       const grades = gradeMap.get(c.id) || {}
@@ -125,6 +179,7 @@
           title: a.name || 'Без названия',
           type: itemType(a),
           due_at: a.due_at || null,
+          lock_at: a.lock_at || null, // «Доступно до» — фолбэк-дедлайн без Срока
           points_possible: a.points_possible || 0,
           html_url: a.html_url || `https://canvas.yu.edu.kz/courses/${a.course_id}/assignments/${a.id}`,
           submitted_at: s.submitted_at || null,

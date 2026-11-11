@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge"
 import { Modal } from "@/components/ui/modal"
 import { kk } from "@/i18n"
 import { useAristosDB } from "@/context/DBContext"
+import { effectiveDeadline } from "@/lib/canvas"
 import {
+  assignmentWeek,
   computeCourseGrades,
   titleWeekNumber,
   type CourseGradeBreakdown,
@@ -99,9 +101,10 @@ function Stat({ label, value }: { label: string; value: number | null }) {
 }
 
 /** Graded work grouped by ACADEMIC WEEK — работы одной недели стоят общим блоком.
- *  Номер из названия («Практика №2» = 2-апта) — первичный источник; датированная
- *  работа без номера попадает в неделю, на которую приходится дата; и только
- *  работы без номера и без даты уходят в хвостовую группу. */
+ *  Неделя = КАЛЕНДАРНАЯ неделя дедлайна (Срок, а без него «Доступно до» — так же
+ *  группирует официальный LTI-тул: «БӨЖ №1» с «Доступно до 27.09» = 4-апта, хоть
+ *  №1 в названии); номер из названия — только когда даты нет; совсем без всего —
+ *  хвостовая группа. */
 function MarksDetail({ courseId }: { courseId: number }) {
   const { canvasAssignments, calendar, activeSemester } = useAristosDB()
 
@@ -112,24 +115,11 @@ function MarksDetail({ courseId }: { courseId: number }) {
     )
 
     const sem = calendar?.semesters?.find((s) => s.semester === activeSemester)
-    const semStart = sem ? new Date(`${sem.semester_start}T00:00:00`) : null
-    const totalWeeks = sem?.total_weeks ?? 15
-
-    // дата → учебная неделя (fallback для работ без номера в названии)
-    function weekFromDate(item: CanvasAssignment): number | null {
-      const dateRef = item.submitted_at ?? item.due_at
-      if (!dateRef || !semStart) return null
-      const date = new Date(dateRef)
-      if (Number.isNaN(date.getTime())) return null
-      const week =
-        Math.floor((date.getTime() - semStart.getTime()) / 86_400_000 / 7) + 1
-      return week >= 1 && week <= totalWeeks ? week : null
-    }
 
     const byWeek = new Map<number, CanvasAssignment[]>()
     const unknown: CanvasAssignment[] = []
     for (const item of marks) {
-      const week = titleWeekNumber(item.title) ?? weekFromDate(item)
+      const week = assignmentWeek(item, sem)
       if (week === null) {
         unknown.push(item)
         continue
@@ -140,8 +130,8 @@ function MarksDetail({ courseId }: { courseId: number }) {
     // внутри недели: датированные по времени, бездатные — в конец блока
     for (const items of byWeek.values()) {
       items.sort((a, b) =>
-        (a.submitted_at ?? a.due_at ?? "9999").localeCompare(
-          b.submitted_at ?? b.due_at ?? "9999"
+        (a.submitted_at ?? effectiveDeadline(a) ?? "9999").localeCompare(
+          b.submitted_at ?? effectiveDeadline(b) ?? "9999"
         )
       )
     }
@@ -194,8 +184,8 @@ function MarksDetail({ courseId }: { courseId: number }) {
                     </span>
                   ) : (
                     <span className="w-12 shrink-0 text-muted-foreground tabular-nums">
-                      {(item.submitted_at ?? item.due_at)
-                        ? `${new Date(item.submitted_at ?? item.due_at!).getDate()} ${kk.months[new Date(item.submitted_at ?? item.due_at!).getMonth()].slice(0, 3).toLowerCase()}`
+                      {(item.submitted_at ?? effectiveDeadline(item))
+                        ? `${new Date(item.submitted_at ?? effectiveDeadline(item)!).getDate()} ${kk.months[new Date(item.submitted_at ?? effectiveDeadline(item)!).getMonth()].slice(0, 3).toLowerCase()}`
                         : "—"}
                     </span>
                   )}

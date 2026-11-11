@@ -58,6 +58,16 @@ const SPRING_TABLE = `
     <tr><th>Оценка</th><td>75</td><td>82</td></tr></table>
   </div>`
 
+// Августовские пары первого семестра (как у «Инклюзивная образовательная среда»
+// осени 2026/27: 31.08 = 100) — при year=2026 август должен остаться в 2026,
+// а не уехать в 2027 (раньше уезжал — «Август» вставал последним в сетке).
+const AUGUST_TABLE = `
+  <div><b>IOS 112142-1-L (Шарипова А.Б)</b>
+    <table><tr><th>Месяц</th><th>Август</th><th>Сентябрь</th></tr>
+    <tr><th>Дата</th><td>31</td><td>7</td></tr>
+    <tr><th>Оценка</th><td>100</td><td>100</td></tr></table>
+  </div>`
+
 // ---------- 1. Парсер карточек на реальном дампе ----------
 if (HAS_DUMP) {
   const html = readFileSync(DUMP, 'utf8')
@@ -103,6 +113,9 @@ if (HAS_DUMP) {
   <div class="card border" data-id="301">
     <div class="project-box-header"><div class="name" title="История Казахстана(IstK 1102-12-L)"><a>История Казахстана(IstK 1102-12-L)</a></div></div>
   </div>
+  <div class="card border" data-id="302">
+    <div class="project-box-header"><div class="name" title="Инклюзивная образовательная среда(IOS 112142-1-L)"><a>Инклюзивная образовательная среда(IOS 112142-1-L)</a></div></div>
+  </div>
   <div class="modal fade" id="marksModal" aria-hidden="true">
     <div class="modal-content">
       <div class="modal-header">
@@ -125,6 +138,8 @@ if (HAS_DUMP) {
     fill('Наука об образовании и ключевые теории обучения(NOOKTO 113142-1-L)', NOOKTO_TABLES))
   document.querySelector(".card[data-id='301'] .project-box-header").addEventListener('click', () =>
     fill('История Казахстана(IstK 1102-12-L)', SPRING_TABLE))
+  document.querySelector(".card[data-id='302'] .project-box-header").addEventListener('click', () =>
+    fill('Инклюзивная образовательная среда(IOS 112142-1-L)', AUGUST_TABLE))
 
   const clicked = platonusCardClick(300)
   check('click: ok + пустые базлайны', [clicked.ok, clicked.prevTitle, clicked.prevText], [true, '', ''])
@@ -152,7 +167,7 @@ if (HAS_DUMP) {
   // extract зачистил модалку — probe больше не должен считать её «своей»
   check('extract зачистил show-состояние', document.getElementById('marksModal').classList.contains('show'), false)
 
-  // вторая карточка: весенний семестр, месяцы 1–8 уезжают в year+1
+  // вторая карточка: весенний семестр, месяцы 1–7 уезжают в year+1
   const clicked2 = platonusCardClick(301)
   await sleep(200)
   const probe2 = platonusCardProbe(clicked2.prevTitle, clicked2.prevText)
@@ -160,6 +175,15 @@ if (HAS_DUMP) {
   const spring = platonusCardExtract(2024, false)
   check('весна: январь = year+1', spring.map((m) => m.date), ['2025-01-09', '2025-01-23'])
   check('весна: код/вид', [spring[0].code, spring[0].kind], ['IstK 1102-12-L', 'lecture'])
+
+  // третья карточка: осенний семестр с августовскими парами — 31.08 остаётся в year
+  const clicked3 = platonusCardClick(302)
+  await sleep(200)
+  const probe3 = platonusCardProbe(clicked3.prevTitle, clicked3.prevText)
+  check('третья карточка: ready', probe3.state, 'ready')
+  const autumn = platonusCardExtract(2026, false)
+  check('осень: август 31 = year (не year+1)', autumn.map((m) => m.date), ['2026-08-31', '2026-09-07'])
+  check('осень: код/вид', [autumn[0].code, autumn[0].kind], ['IOS 112142-1-L', 'lecture'])
 }
 
 // ---------- 3. Контракты: stale / empty / дедуп ----------

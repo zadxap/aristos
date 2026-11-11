@@ -59,7 +59,9 @@ export function isCanvasAssignment(value: unknown): value is CanvasAssignment {
     isNullableString(value.due_at) && typeof value.points_possible === 'number' &&
     typeof value.html_url === 'string' && isNullableString(value.submitted_at) &&
     isNullableNumber(value.score) && typeof value.graded === 'boolean' &&
-    typeof value.late === 'boolean' && typeof value.missing === 'boolean'
+    typeof value.late === 'boolean' && typeof value.missing === 'boolean' &&
+    // lock_at добавлен позже: старые payload'ы/расширения без него валидны
+    (value.lock_at === undefined || isNullableString(value.lock_at))
 }
 
 export function isCanvasSyncPayload(value: unknown): value is CanvasSyncPayload {
@@ -72,6 +74,18 @@ export function isCanvasSyncPayload(value: unknown): value is CanvasSyncPayload 
 
 export function isCanvasSyncMessage(value: unknown): value is CanvasSyncMessage {
   return isRecord(value) && value.type === 'aristos-canvas-sync' && isCanvasSyncPayload(value.payload)
+}
+
+/**
+ * Эффективный дедлайн задания: «Срок» (due_at), а если не задан — «Доступно
+ * до» (lock_at). Canvas у части работ не ставит срок, но закрывает приём
+ * окном доступности («Доступно: до 29 Ноя в 23:59» на БОЖ/СОБЖ) — для
+ * дедлайн-логики это тот же рабочий дедлайн.
+ */
+export function effectiveDeadline(
+  a: Pick<CanvasAssignment, 'due_at'> & { lock_at?: string | null }
+): string | null {
+  return a.due_at ?? a.lock_at ?? null
 }
 
 /**

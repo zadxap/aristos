@@ -3,7 +3,7 @@ import type { AcadCalendar, DateRange } from "@/types"
 import { kk } from "@/i18n"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { getAcademicWeek } from "@/lib/academic-week"
+import { getAcademicWeek, weekStartDate } from "@/lib/academic-week"
 import { cn } from "@/lib/utils"
 
 interface SemesterTimelineProps {
@@ -119,12 +119,13 @@ export function SemesterTimeline({
     sem.total_weeks
   )
   const weeks = Array.from({ length: sem.total_weeks }, (_, i) => i + 1)
+  // от того же якоря, что и getAcademicWeek (понедельник недели старта) —
+  // иначе тултипы расходятся с подсветкой текущей недели
   const weekDateRange = (w: number) => {
-    const start = new Date(sem.semester_start)
-    start.setDate(start.getDate() + (w - 1) * 7)
-    const end = new Date(start)
-    end.setDate(end.getDate() + 6)
-    const iso = (d: Date) => d.toISOString().slice(0, 10)
+    const start = weekStartDate(sem.semester_start, w)
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6)
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
     return `${fmt(iso(start))} — ${fmt(iso(end))}`
   }
 

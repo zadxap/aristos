@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Card, CardContent } from '@/components/ui/card'
 import { kk } from '@/i18n'
+import { effectiveDeadline } from '@/lib/canvas'
 import type { CanvasAssignment } from '@/types'
 import {
   AXIS_TICK,
@@ -69,8 +70,9 @@ export function DeadlineBars({ assignments }: { assignments: CanvasAssignment[] 
       })
     }
     for (const item of assignments) {
-      if (!item.due_at) continue
-      const { year, week } = isoWeek(new Date(item.due_at))
+      const dueIso = effectiveDeadline(item)
+      if (!dueIso) continue
+      const { year, week } = isoWeek(new Date(dueIso))
       const bucket = buckets.get(`${year}-W${String(week).padStart(2, '0')}`)
       if (!bucket) continue
       bucket.total += 1

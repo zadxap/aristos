@@ -146,7 +146,8 @@ export const ru: Dict = {
   syncPlatonusNoPeriods:
     "Периоды не найдены — войдите в Платонус и один раз откройте «Журнал»",
   syncPlatonusEmpty: "Журнал пуст во всех выбранных периодах",
-  syncFailRaw: (msg: string): string => `Ошибка синка: ${msg}`,
+    syncWarnScoresMissing: "баллы не загрузились — повторите Canvas-синк",
+syncFailRaw: (msg: string): string => `Ошибка синка: ${msg}`,
   updateSection: "Обновление",
   updateVersion: "Версия",
   updateAvailable: "Доступна новая версия: {v}",
@@ -609,6 +610,10 @@ export const ru: Dict = {
   gradesNoCoursesForSemester:
     "Для этого курса/семестра не привязано ни одного курса Canvas — привяжите их через «Привязка курсов» на странице «Дедлайны»",
   canvasGrades: "Оценки Canvas",
+  canvasComputedScoreHint:
+    "≈ — вычисленная оценка (из баллов тапсырм): итог Canvas больше не отдаётся API, оценки переехали во внешний инструмент (LTI)",
+  canvasPlatonusScoreHint:
+    "Рейтинг допуска — из журнала Платонуса: вуз официально передаёт туда РК из LTI-тулзы",
   canvasRecentGraded: "Последние оценённые работы",
   canvasAllCourses: "Все курсы",
   outOfSemesterNote:

@@ -95,9 +95,14 @@ async function ensureCanvasSession(): Promise<boolean> {
   return false
 }
 
-export async function runCanvasSync(
-  fx: CanvasSyncFx
-): Promise<{ courses: number; assignments: number }> {
+export interface CanvasSyncResult {
+  courses: number
+  assignments: number
+  /** «мягкий» сбой баллов курсов (ретраи исчерпаны) — причина для UI */
+  scoresDiag: string
+}
+
+export async function runCanvasSync(fx: CanvasSyncFx): Promise<CanvasSyncResult> {
   return withBusy(async () => {
     fx.onStage('canvas-courses')
     // превентивная проверка сессии: если мертва — сразу окно логина,
@@ -112,9 +117,13 @@ export async function runCanvasSync(
       fx.onStage('canvas-courses')
     }
 
-    let payloadJson: string
+    let wrapped: {
+      data: CanvasSyncPayload
+      scoresMissing: boolean
+      scoresDiag: string
+    }
     try {
-      payloadJson = await invoke<string>('canvas_sync_native')
+      wrapped = await invoke('canvas_sync_native')
     } catch (err) {
       if (!isNeedLogin(err)) throw err
       // сессия умерла прямо во время синка — окно логина и повтор
@@ -122,10 +131,10 @@ export async function runCanvasSync(
       const ok = await ensureCanvasSession()
       if (!ok) throw new Error('login-timeout', { cause: err })
       fx.onStage('canvas-courses')
-      payloadJson = await invoke<string>('canvas_sync_native')
+      wrapped = await invoke('canvas_sync_native')
     }
 
-    const payload = JSON.parse(payloadJson) as CanvasSyncPayload
+    const payload = wrapped.data
     payload.syncedAt = new Date().toISOString()
     if (!isCanvasSyncPayload(payload)) throw new Error('canvas-invalid-payload')
     fx.onStage('canvas-apply')
@@ -133,6 +142,7 @@ export async function runCanvasSync(
     return {
       courses: payload.courses.length,
       assignments: payload.assignments.length,
+      scoresDiag: wrapped.scoresMissing ? wrapped.scoresDiag : '',
     }
   })
 }

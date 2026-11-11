@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { CourseMappingModal } from '@/components/deadlines/CourseMappingModal'
 import { CanvasGradesStrip } from '@/components/deadlines/CanvasGradesStrip'
 import { kk } from '@/i18n'
+import { effectiveDeadline } from '@/lib/canvas'
+import { courseAdmissionRating } from '@/lib/grade-scheme'
 import { useAristosDB } from '@/context/DBContext'
 import type { CanvasAssignment, CanvasCourse } from '@/types'
 
@@ -22,6 +24,9 @@ function DueCard({ item, course }: { item: CanvasAssignment; course?: CanvasCour
 
   const subjectId = canvasCourseMap[String(item.course_id)] ?? null
   const subject = subjectId ? subjects.find((s) => s.subject_id === subjectId) : undefined
+  // Срок, а без него «Доступно до» (lock_at) — карточка дедлайна обязана
+  // показывать и просрочивать по нему
+  const due = effectiveDeadline(item)
 
   const status: 'missing' | 'late' | 'graded' | 'submitted' | 'open' = item.missing
     ? 'missing'
@@ -38,7 +43,7 @@ function DueCard({ item, course }: { item: CanvasAssignment; course?: CanvasCour
     late: 'bg-amber-500',
     graded: 'bg-emerald-500',
     submitted: 'bg-blue-500',
-    open: item.due_at && new Date(item.due_at) < new Date() ? 'bg-rose-500' : 'bg-border',
+    open: due && new Date(due) < new Date() ? 'bg-rose-500' : 'bg-border',
   }[status]
 
   return (
@@ -62,7 +67,7 @@ function DueCard({ item, course }: { item: CanvasAssignment; course?: CanvasCour
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
             <CalendarClock className="size-3.5" />
-            {item.due_at ? formatDueDate(item.due_at) : '—'}
+            {due ? formatDueDate(due) : '—'}
           </span>
           {item.points_possible > 0 && (
             <span>{item.points_possible} {kk.points}</span>
@@ -78,7 +83,7 @@ function DueCard({ item, course }: { item: CanvasAssignment; course?: CanvasCour
           {status === 'late' && <Badge variant="amber" className="text-[10px] px-1.5 py-0">{kk.statusLate}</Badge>}
           {status === 'graded' && <Badge variant="emerald" className="text-[10px] px-1.5 py-0">{kk.statusGraded}</Badge>}
           {status === 'submitted' && <Badge variant="blue" className="text-[10px] px-1.5 py-0">{kk.statusSubmitted}</Badge>}
-          {status === 'open' && item.due_at && new Date(item.due_at) < new Date() && (
+          {status === 'open' && due && new Date(due) < new Date() && (
             <Badge variant="rose" className="text-[10px] px-1.5 py-0">{kk.overdue}</Badge>
           )}
         </div>
@@ -146,6 +151,9 @@ export function DeadlinesPage() {
     canvasCourses,
     canvasAssignments,
     canvasLastSync,
+    calendar,
+    activeSemester,
+    platonusYears,
   } = useAristosDB()
   const [mappingOpen, setMappingOpen] = useState(false)
   const [courseFilter, setCourseFilter] = useState<number | 'all'>('all')
@@ -154,6 +162,20 @@ export function DeadlinesPage() {
     () => new Map(canvasCourses.map((course) => [course.id, course])),
     [canvasCourses]
   )
+
+  // Рейтинг допуска курса: Canvas-итог → официальный «Рейтинг» из Платонуса
+  // (вуз передаёт РК из LTI-тулзы в Платонус) → вычисленный из тапсырм
+  const semester = useMemo(
+    () => calendar?.semesters?.find((s) => s.semester === activeSemester),
+    [calendar, activeSemester]
+  )
+  const courseRatings = useMemo(() => {
+    const map = new Map<number, { value: number | null; source: 'canvas' | 'platonus' | 'computed' }>()
+    for (const course of canvasCourses) {
+      map.set(course.id, courseAdmissionRating(course, canvasAssignments, platonusYears, semester))
+    }
+    return map
+  }, [canvasCourses, canvasAssignments, platonusYears, semester])
 
   const gradedCounts = useMemo(() => {
     const counts = new Map<number, number>()
@@ -182,11 +204,12 @@ export function DeadlinesPage() {
         buckets.graded.push(item)
         continue
       }
-      if (!item.due_at) {
+      const dueIso = effectiveDeadline(item)
+      if (!dueIso) {
         buckets.none.push(item)
         continue
       }
-      const due = new Date(item.due_at)
+      const due = new Date(dueIso)
       if (due < startToday) {
         // Drop ancient items unless they still lack a grade.
         if (due >= cutoff || (!item.graded && !item.submitted_at)) buckets.overdue.push(item)
@@ -196,10 +219,10 @@ export function DeadlinesPage() {
     }
 
     const byDueAsc = (a: CanvasAssignment, b: CanvasAssignment) =>
-      (a.due_at ?? '9999').localeCompare(b.due_at ?? '9999')
+      (effectiveDeadline(a) ?? '9999').localeCompare(effectiveDeadline(b) ?? '9999')
     for (const list of Object.values(buckets)) list.sort(byDueAsc)
     // Оценённые — свежие сверху
-    buckets.graded.sort((a, b) => (b.due_at ?? '').localeCompare(a.due_at ?? ''))
+    buckets.graded.sort((a, b) => (effectiveDeadline(b) ?? '').localeCompare(effectiveDeadline(a) ?? ''))
     return buckets
   }, [canvasAssignments, courseFilter])
 
@@ -248,6 +271,7 @@ export function DeadlinesPage() {
                 gradedCounts={gradedCounts}
                 selected={courseFilter}
                 onSelect={setCourseFilter}
+                ratings={courseRatings}
               />
             </div>
 
@@ -322,6 +346,7 @@ export function DeadlinesPage() {
               gradedCounts={gradedCounts}
               selected={courseFilter}
               onSelect={setCourseFilter}
+              ratings={courseRatings}
             />
           </aside>        </div>
       )}

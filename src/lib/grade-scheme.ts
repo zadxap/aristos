@@ -1,4 +1,6 @@
-import type { CanvasAssignment, CanvasCourse, SemesterCalendar } from '@/types'
+import type { CanvasAssignment, CanvasCourse, PlatonusYearRecord, SemesterCalendar } from '@/types'
+import { effectiveDeadline } from '@/lib/canvas'
+import { getAcademicWeek } from '@/lib/academic-week'
 
 const EXAM_RE = /емтихан|экзамен|exam/i
 
@@ -91,34 +93,44 @@ export function computeCourseGrades(
   } else if (semester?.semester_start) {
     boundaryDay = shiftDay(semester.semester_start, 56)
   } else if (regular.length > 0) {
-    const days = regular.map((item) => localDay(item.due_at!))
-    boundaryDay = days[Math.floor(days.length / 2)]
+    const days = regular
+      .map((item) => effectiveDeadline(item))
+      .filter((d): d is string => d !== null)
+      .map((d) => localDay(d))
+      .sort()
+    boundaryDay = days[Math.floor(days.length / 2)] ?? null
   }
 
-  const rk1Values: number[] = []
-  const rk2Values: number[] = []
-  const rk2Ids: number[] = []
+  // Недели 1–15: НЕДЕЛЯ = среднее баллов работ этой недели; РК1 = среднее
+  // недельных средних недель 1–8, РК2 = недель 9–15 — ровно как официальный
+  // LTI-тул, который передаёт в Платонус недельные средние по понедельникам.
+  // Проверено на INOPAK 2026/1: РК1 74.54, РК2 94.25, Рейтинг 84.40 — сходится
+  // точно (прежняя модель «среднее всех работ РК» давала 75.56/92.33).
+  const weekValues = new Map<number, number[]>() // неделя → проценты работ
+  const extraRk1: number[] = [] // без даты и без номера (деградированный режим)
+  const extraRk2: number[] = []
+  const rk2Ids: number[] = [] // id работ РК2 — для распределения недатированных
   const undatedUnnumbered: CanvasAssignment[] = []
 
-  // Period priority: weekly number in the title («…№N» = week N) → due date → id order
+  // Неделя работы — общий хелпер assignmentWeek (календарная неделя дедлайна,
+  // номер из названия только без даты; без даты и номера — старые фолбэки)
+  // Period priority: calendar week of the deadline → title №N → boundary/id order
   for (const item of regular) {
     const p = percent(item)
     if (p === null) continue
-    const week = titleWeekNumber(item.title)
+    const week = assignmentWeek(item, semester)
     if (week !== null) {
-      if (week <= 8) rk1Values.push(p)
-      else {
-        rk2Values.push(p)
-        rk2Ids.push(item.id)
-      }
+      const list = weekValues.get(week) ?? []
+      list.push(p)
+      weekValues.set(week, list)
+      if (week > 8) rk2Ids.push(item.id)
       continue
     }
-    if (item.due_at && boundaryDay) {
-      if (localDay(item.due_at) <= boundaryDay) rk1Values.push(p)
-      else {
-        rk2Values.push(p)
-        rk2Ids.push(item.id)
-      }
+    // дата для РК-разбивки: Срок или «Доступно до» (lock_at)
+    const dueIso = effectiveDeadline(item)
+    if (dueIso && boundaryDay) {
+      if (localDay(dueIso) <= boundaryDay) extraRk1.push(p)
+      else extraRk2.push(p)
       continue
     }
     undatedUnnumbered.push(item)
@@ -130,12 +142,31 @@ export function computeCourseGrades(
   for (const item of undatedUnnumbered) {
     const p = percent(item)
     if (p === null) continue
-    if (rk2MinId !== null && item.id >= rk2MinId) rk2Values.push(p)
-    else rk1Values.push(p)
+    if (rk2MinId !== null && item.id >= rk2MinId) extraRk2.push(p)
+    else extraRk1.push(p)
   }
 
-  const rk1 = rk1Values.length ? round2(avg(rk1Values) as number) : null
-  const rk2 = rk2Values.length ? round2(avg(rk2Values) as number) : null
+  // РК = среднее недельных средних недель своего периода; работы без даты/номера
+  // идут одной синтетической «неделей» на РК (их среднее участвует как один элемент)
+  const meanOfWeeks = (from: number, to: number, extra: number[]): number | null => {
+    const weekMeans: number[] = []
+    for (let w = from; w <= to; w++) {
+      const list = weekValues.get(w)
+      const m = list && list.length ? avg(list) : null
+      if (m !== null) weekMeans.push(m)
+    }
+    const extraMean = extra.length ? avg(extra) : null
+    if (extraMean !== null) weekMeans.push(extraMean)
+    return weekMeans.length ? round2(avg(weekMeans) as number) : null
+  }
+  const countItems = (from: number, to: number, extra: number[]): number => {
+    let n = extra.length
+    for (let w = from; w <= to; w++) n += weekValues.get(w)?.length ?? 0
+    return n
+  }
+
+  const rk1 = meanOfWeeks(1, 8, extraRk1)
+  const rk2 = meanOfWeeks(9, 15, extraRk2)
   const rating = rk1 !== null && rk2 !== null ? round2((rk1 + rk2) / 2) : null
 
   const examPercents = examItems
@@ -147,8 +178,8 @@ export function computeCourseGrades(
 
   return {
     courseId: course.id,
-    itemsRk1: rk1Values.length,
-    itemsRk2: rk2Values.length,
+    itemsRk1: countItems(1, 8, extraRk1),
+    itemsRk2: countItems(9, 15, extraRk2),
     srTek1: rk1,
     srTek2: rk2,
     rk1,
@@ -158,4 +189,50 @@ export function computeCourseGrades(
     final,
     canvasScore: course.current_score,
   }
+}
+
+/**
+ * Учебная неделя работы: сначала КАЛЕНДАРНАЯ неделя эффективного дедлайна
+ * (Срок due_at, а без него «Доступно до» lock_at) от понедельника недели
+ * старта семестра — так же группирует официальный LTI-тул, чьи РК уходят в
+ * Платонус: «БӨЖ №1» со «Доступно до 27.09» = 4-апта, несмотря на №1 в
+ * названии. Номер из названия — только когда даты нет.
+ */
+export function assignmentWeek(
+  item: CanvasAssignment,
+  semester?: SemesterCalendar
+): number | null {
+  const dueIso = effectiveDeadline(item)
+  if (dueIso && semester?.semester_start) {
+    return getAcademicWeek(new Date(dueIso), semester.semester_start, semester.total_weeks ?? 15)
+  }
+  return titleWeekNumber(item.title)
+}
+
+export type AdmissionRatingSource = 'canvas' | 'platonus' | 'computed'
+
+/**
+ * Рейтинг допуска курса — «быстрый статус» в дашборде. Приоритет источников:
+ *  1. canvas — официальный итог Canvas (если грейдбук снова начнут считать);
+ *  2. platonus — «Рейтинг» из журнала Платонуса: вуз считает РК в LTI-тулзе
+ *     и передаёт её в Платонус, так что журнал содержит ОФИЦИАЛЬНЫЕ числа
+ *     (агрегация тулзы по датам не совпадает с нашей по №N — расхождение ~0.5);
+ *  3. computed — вычисленный из тапсырм по схеме РК1/РК2 (что выше).
+ * Берём запись с максимальным годом/термином, содержащую код курса.
+ */
+export function courseAdmissionRating(
+  course: CanvasCourse,
+  assignments: CanvasAssignment[],
+  platonusYears: PlatonusYearRecord[],
+  semester?: SemesterCalendar
+): { value: number | null; source: AdmissionRatingSource } {
+  if (course.current_score !== null) return { value: course.current_score, source: 'canvas' }
+
+  const records = [...platonusYears].sort((a, b) => (b.year - a.year) || (b.term - a.term))
+  for (const record of records) {
+    const subject = record.subjects.find((s) => s.code === course.code)
+    if (subject && subject.rating !== null) return { value: subject.rating, source: 'platonus' }
+  }
+
+  return { value: computeCourseGrades(course, assignments, semester).rating, source: 'computed' }
 }

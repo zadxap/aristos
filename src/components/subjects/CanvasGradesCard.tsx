@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { kk } from '@/i18n'
 import { useAristosDB } from '@/context/DBContext'
+import { courseAdmissionRating } from '@/lib/grade-scheme'
 import { scoreBadgeVariant } from '@/lib/score-tone'
 import { cn } from '@/lib/utils'
 import type { Subject } from '@/types'
@@ -16,9 +17,11 @@ const TONE_TEXT: Record<string, string> = {
   outline: 'text-muted-foreground',
 }
 
-/** Canvas overall score + recent graded work for the subject's mapped course. */
+/** Canvas overall score + recent graded work for the subject's mapped course.
+ *  Итог по приоритету courseAdmissionRating(): Canvas-итог → официальный
+ *  «Рейтинг» из Платонуса → «≈рейтинг», вычисленный из тапсырм. */
 export function CanvasGradesCard({ subject }: { subject: Subject }) {
-  const { canvasCourses, canvasAssignments, canvasCourseMap } = useAristosDB()
+  const { canvasCourses, canvasAssignments, canvasCourseMap, calendar, activeSemester, platonusYears } = useAristosDB()
 
   const mappedEntry = Object.entries(canvasCourseMap).find(([, subjectId]) => subjectId === subject.subject_id)
   if (!mappedEntry) return null
@@ -26,12 +29,18 @@ export function CanvasGradesCard({ subject }: { subject: Subject }) {
   const course = canvasCourses.find((c) => c.id === courseId)
   if (!course) return null
 
+  const semester = calendar?.semesters?.find((s) => s.semester === activeSemester)
+  const admission = courseAdmissionRating(course, canvasAssignments, platonusYears, semester)
+  const value = admission.value
+  const isComputed = admission.source === 'computed' && value !== null
+  const fromPlatonus = admission.source === 'platonus'
+
   const graded = canvasAssignments
     .filter((item) => item.course_id === courseId && item.graded)
     .sort((a, b) => (b.submitted_at ?? b.due_at ?? '').localeCompare(a.submitted_at ?? a.due_at ?? ''))
     .slice(0, 5)
 
-  const tone = scoreBadgeVariant(course.current_score)
+  const tone = scoreBadgeVariant(value)
 
   return (
     <Card className="border-border/80 shadow-xs">
@@ -46,9 +55,21 @@ export function CanvasGradesCard({ subject }: { subject: Subject }) {
             <GraduationCap className="size-5" />
           </div>
           <div>
-            <p className="text-[11px] text-muted-foreground">{kk.currentScore}</p>
-            <p className={cn('text-xl font-bold tabular-nums leading-tight', TONE_TEXT[tone])}>
-              {course.current_score !== null ? `${course.current_score}%` : '—'}
+            <p
+              className="text-[11px] text-muted-foreground"
+              title={isComputed ? kk.canvasComputedScoreHint : fromPlatonus ? kk.canvasPlatonusScoreHint : undefined}
+            >
+              {fromPlatonus ? kk.rating : kk.currentScore}
+            </p>
+            <p
+              className={cn(
+                'text-xl font-bold tabular-nums leading-tight',
+                isComputed && 'italic',
+                TONE_TEXT[tone],
+              )}
+              title={isComputed ? kk.canvasComputedScoreHint : fromPlatonus ? kk.canvasPlatonusScoreHint : undefined}
+            >
+              {value !== null ? `${isComputed ? '≈' : ''}${value}%` : '—'}
               {course.current_grade && (
                 <span className="ml-1.5 text-sm font-medium">{course.current_grade}</span>
               )}

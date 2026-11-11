@@ -239,7 +239,7 @@
           const month = monthByCol[col]
           if (!Number.isFinite(mark) || !Number.isFinite(day) || !month) continue
           // учебный год начинается с сентября: месяцы 1–8 относятся к year+1
-          const y = month >= 9 ? year : year + 1
+          const y = month >= 8 ? year : year + 1
           out.push({
             code: currentCode,
             kind: currentKind,

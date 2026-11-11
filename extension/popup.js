@@ -40,6 +40,26 @@ const I18N = {
     stagePlatonusOpening: 'Платонус: журнал ашылуда...',
     stagePlatonusPeriod: (y, term, i, n) => `Платонус: ${y}/${term} (${i}/${n})...`,
     stagePlatonusMarks: (y, term, i, n) => `Платонус: ${y}/${term} — бағалар ${i}/${n}...`,
+    // ошибки воркера (background.js бросает готовые русские строки —
+    // попап узнаёт их по шаблонам ERROR_MATCHERS и переводит)
+    errBusy: (s) => `Синк әлі жүріп тұр (${s}) — аяқталуын күт`,
+    errCanvasSession: 'Canvas сессиясы аяқталды — canvas.yu.edu.kz сайтына қайта кір',
+    errCanvasForbidden: (p) => `Canvas «${p}» сұрауына рұқсат бермеді`,
+    errCanvasApi: (st, p) => `Canvas API қатесі ${st} (${p})`,
+    errNoUrl: 'Алдымен попапта Aristos адресін сақта',
+    errNoAccess: (o) => `«${o}» үшін рұқсат жоқ — адресді попапта қайта сақта`,
+    errTabMissing: (id, m) => `Aristos қойындысы табылмады (id=${id}): ${m}`,
+    errTabStuck: 'Aristos қойындысы жүктелмеді — оны қолмен ашып, синкті қайтала',
+    errStorageWrite: 'Aristos қойындысына деректер жазылмады — бетті жаңарт (F5) және синкті қайтала',
+    errNoAck30: 'Қосымша 30 с ішінде жауап бермеді — Aristos ашық тұр ма?',
+    errNoAck60: 'Қосымша қабылдауды 60 с ішінде растамады — дашбордты жаңарт (F5) және синкті қайтала',
+    errTabNotResponding: 'Aristos қойындысы жауап бермейді — бетті жаңарт (F5) және синкті қайтала',
+    errNoStudentIdHint: 'studentID табылмады — Платонусқа кіріп, «Бағалар журналын» бір рет аш, сосын қайталап көр',
+    errNoStudentIdDiscover: 'studentID табылмады — алдымен «Қолжетімді кезеңдерді табу» батырмасын бас',
+    errParserFailed: 'Парсер Платонус қойындысын оқи алмады',
+    errJournalEmpty: 'Таңдалған кезеңдердің бірде-бірінде журнал бос — жыл/семестрді тексер',
+    errRejected: 'Aristos деректерді қабылдамады',
+    warnScoresMissing: 'балдар жүктелмеді — Canvas-синкті қайтала',
   },
   ru: {
     urlLabel: 'Адрес дашборда Aristos',
@@ -79,6 +99,24 @@ const I18N = {
     stagePlatonusOpening: 'Платонус: открываю журнал...',
     stagePlatonusPeriod: (y, term, i, n) => `Платонус: ${y}/${term} (${i}/${n})...`,
     stagePlatonusMarks: (y, term, i, n) => `Платонус: ${y}/${term} — оценки ${i}/${n}...`,
+    errBusy: (s) => `Синк уже идёт (${s}) — дождись завершения`,
+    errCanvasSession: 'Сессия Canvas истекла — перезайдите в canvas.yu.edu.kz',
+    errCanvasForbidden: (p) => `Canvas запретил доступ к ${p}`,
+    errCanvasApi: (st, p) => `Canvas API ${st} для ${p}`,
+    errNoUrl: 'Сначала укажите адрес Aristos в настройках расширения',
+    errNoAccess: (o) => `Доступ к ${o} не выдан — сохраните адрес в попапе ещё раз`,
+    errTabMissing: (id, m) => `Вкладка не найдена (id=${id}): ${m}`,
+    errTabStuck: 'Вкладка Aristos не загрузилась — открой её вручную и повтори',
+    errStorageWrite: 'Не удалось записать данные во вкладку Aristos — обнови её (F5) и повтори синк',
+    errNoAck30: 'Приложение не ответило за 30 с — открывается ли Aristos?',
+    errNoAck60: 'Приложение не подтвердило приём за 60 с — обнови вкладку дашборда (F5) и повтори синк',
+    errTabNotResponding: 'Вкладка Aristos не отвечает — обнови её (F5) и повтори синк',
+    errNoStudentIdHint: 'Не удалось определить studentID — откройте «Журнал оценок» в Платонусе один раз и повторите',
+    errNoStudentIdDiscover: 'Не удалось определить studentID — сначала «Найти доступные периоды»',
+    errParserFailed: 'Парсер не смог прочитать вкладку Платонуса',
+    errJournalEmpty: 'Журнал пуст во всех выбранных периодах — проверьте год/семестр',
+    errRejected: 'Aristos отклонил данные',
+    warnScoresMissing: 'баллы не загрузились — повтори Canvas-синк',
   },
 }
 
@@ -103,6 +141,41 @@ function applyLang() {
   document.querySelectorAll('[data-lang-btn]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.langBtn === lang)
   })
+}
+
+// Ошибки воркера — готовые русские строки (Error.message из background.js,
+// воркер не знает языка попапа). Знакомые шаблоны переводим на язык попапа,
+// незнакомые (напр. сырой сетевой сбой) показываем как есть.
+// ВАЖНО: при смене текста ошибки в background.js синхронизировать regex здесь.
+const ERROR_MATCHERS = [
+  [/^Синк уже идёт \((.+)\) — дождись завершения$/, 'errBusy', (m) => [m[1]]],
+  [/^Сессия Canvas истекла/, 'errCanvasSession'],
+  [/^Canvas запретил доступ к (.+)$/, 'errCanvasForbidden', (m) => [m[1]]],
+  [/^Canvas API (\d+) для (.+)$/, 'errCanvasApi', (m) => [m[1], m[2]]],
+  [/^Сначала укажите адрес Aristos/, 'errNoUrl'],
+  [/^Нет доступа к (.+) — сохраните адрес в попапе ещё раз$/, 'errNoAccess', (m) => [m[1]]],
+  [/^Вкладка не найдена \(id=(\d+)\): (.+)$/, 'errTabMissing', (m) => [m[1], m[2]]],
+  [/^Вкладка Aristos не загрузилась/, 'errTabStuck'],
+  [/^Не удалось записать данные во вкладку Aristos/, 'errStorageWrite'],
+  [/^Приложение не ответило за 30 с/, 'errNoAck30'],
+  [/^Приложение не подтвердило приём за 60 с/, 'errNoAck60'],
+  [/^Вкладка Aristos не отвечает/, 'errTabNotResponding'],
+  [/^Не удалось определить studentID — откройте/, 'errNoStudentIdHint'],
+  [/^Не удалось определить studentID — сначала/, 'errNoStudentIdDiscover'],
+  [/^Парсер не смог прочитать вкладку Платонуса/, 'errParserFailed'],
+  [/^Журнал пуст во всех выбранных периодах/, 'errJournalEmpty'],
+  [/^Aristos отклонил данные/, 'errRejected'],
+]
+
+function localizeError(raw) {
+  const s = String(raw || '')
+  for (const [re, key, getArgs] of ERROR_MATCHERS) {
+    const m = s.match(re)
+    if (!m) continue
+    const val = t(key)
+    return typeof val === 'function' ? val(...(getArgs ? getArgs(m) : [])) : val
+  }
+  return s
 }
 
 const urlInput = document.getElementById('aristos-url')
@@ -187,7 +260,7 @@ async function init() {
     setStatus(t('staleSync'), 'err')
   } else if (syncState && (syncState.lastResult || syncState.lastError)) {
     if (syncState.lastResult) setStatus(syncState.lastResult, 'ok')
-    else setStatus(t('lastErrorPrefix') + syncState.lastError, 'err')
+    else setStatus(t('lastErrorPrefix') + localizeError(syncState.lastError), 'err')
   }
 
   // Восстановить найденные периоды Платонуса — попап закрывается при любом
@@ -216,7 +289,7 @@ function pollSyncState() {
       clearInterval(statePoll)
       statePoll = null
       if (syncState && syncState.lastResult) setStatus(syncState.lastResult, 'ok')
-      else if (syncState && syncState.lastError) setStatus(t('errorPrefix') + syncState.lastError, 'err')
+      else if (syncState && syncState.lastError) setStatus(t('errorPrefix') + localizeError(syncState.lastError), 'err')
       syncBtn.disabled = false
       saveBtn.disabled = false
       return
@@ -353,21 +426,24 @@ function attachPortListeners(port) {
       setStatus(renderStage(msg) + ' ' + t('bgHint'), 'busy')
     } else if (msg.type === 'done') {
       updateLastSync(new Date().toISOString())
-      setStatus(
-        msg.kind === 'platonus'
-          ? t('doneRecords')(msg.courses, msg.assignments)
-          : t('syncDoneCanvas')(msg.courses, msg.assignments),
-        'ok',
-      )
+      const base = msg.kind === 'platonus'
+        ? t('doneRecords')(msg.courses, msg.assignments)
+        : t('syncDoneCanvas')(msg.courses, msg.assignments)
+      // enrollments-запрос умер после ретраев — баллы курсов не приехали;
+      // gradesDiag (статус/причина от Canvas) помогает понять, что сломалось
+      const warn = msg.scoresMissing
+        ? base + ' · ' + t('warnScoresMissing') + (msg.gradesDiag ? ` [${msg.gradesDiag}]` : '')
+        : base
+      setStatus(warn, 'ok')
     } else if (msg.type === 'platonus-periods') {
       renderPeriods(msg.periods)
       setStatus(t('periodsFound')(msg.periods.length), 'ok')
     } else if (msg.type === 'export') {
       lastPayload = msg.payload
       exportBtn.style.display = 'block'
-      setStatus(t('pushFailed')(msg.message), 'err')
+      setStatus(t('pushFailed')(localizeError(msg.message)), 'err')
     } else if (msg.type === 'error') {
-      setStatus(t('errorPrefix') + msg.message, 'err')
+      setStatus(t('errorPrefix') + localizeError(msg.message), 'err')
     }
   })
 }

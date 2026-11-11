@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, CalendarClock } from 'lucide-react'
 import { kk } from '@/i18n'
+import { effectiveDeadline } from '@/lib/canvas'
 import { useAristosDB } from '@/context/DBContext'
 
 function formatShort(iso: string): string {
@@ -21,8 +22,8 @@ export function UpcomingDeadlines() {
   const upcoming = useMemo(() => {
     const now = new Date().getTime()
     return canvasAssignments
-      .filter((item) => item.due_at && new Date(item.due_at).getTime() >= now && !item.graded)
-      .sort((a, b) => (a.due_at ?? '').localeCompare(b.due_at ?? ''))
+      .filter((item) => effectiveDeadline(item) && new Date(effectiveDeadline(item)!).getTime() >= now && !item.graded)
+      .sort((a, b) => (effectiveDeadline(a) ?? '').localeCompare(effectiveDeadline(b) ?? ''))
       .slice(0, 4)
   }, [canvasAssignments])
 
@@ -48,6 +49,7 @@ export function UpcomingDeadlines() {
           const subjectId = canvasCourseMap[String(item.course_id)] ?? null
           const subject = subjectId ? subjects.find((s) => s.subject_id === subjectId) : undefined
           const courseLabel = subject?.subject_name ?? canvasCourses.find((c) => c.id === item.course_id)?.name ?? kk.itemTypes[item.type]
+          const due = effectiveDeadline(item)!
           return (
             <a
               key={item.id}
@@ -58,7 +60,7 @@ export function UpcomingDeadlines() {
             >
               <div className="flex items-center gap-3">
                 <span className="shrink-0 w-20 text-xs font-semibold text-primary tabular-nums">
-                  {formatShort(item.due_at!)}
+                  {formatShort(due)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm">{item.title}</span>
               </div>

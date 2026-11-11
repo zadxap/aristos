@@ -165,51 +165,141 @@ fn extract_code(name: &str, fallback: Option<&str>) -> String {
 }
 
 fn num_or_null(v: Option<&Value>) -> Value {
-    match v.and_then(|x| x.as_f64()) {
-        Some(n) => json!(n),
-        None => Value::Null,
+    match v {
+        // терпимый парсинг: число или строка-число (защита от смены формы ответа)
+        Some(Value::Number(n)) => json!(n.as_f64()),
+        Some(Value::String(s)) => match s.trim().replace(',', ".").parse::<f64>() {
+            Ok(n) => json!(n),
+            Err(_) => Value::Null,
+        },
+        _ => Value::Null,
     }
 }
 
-/// Полный Canvas-синк. Возвращает payload-JSON строку; Err("need-login") —
-/// нет/истекла сессия (JS открывает окно логина и повторяет).
+fn grades_have_scores(enrollments: &[Value]) -> bool {
+    enrollments.iter().any(|e| {
+        e.get("grades")
+            .and_then(|g| g.get("current_score"))
+            .map(|s| !s.is_null())
+            .unwrap_or(false)
+    })
+}
+
+async fn sleep_ms(ms: u64) {
+    tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+}
+
+/// Оценки курсов: до 3 попыток enrollments (ошибка ИЛИ «200 без оценок»),
+/// затем per-course фолбэк — как в extension (см. CHANGELOG 11.11).
+/// Возвращает (map course_id → (score, grade), diag-причина, scoresMissing).
+async fn fetch_grade_map(
+    client: &CanvasClient,
+    course_ids: &[i64],
+) -> (
+    std::collections::HashMap<i64, (Value, Value)>,
+    String,
+    bool,
+) {
+    let mut grade_map: std::collections::HashMap<i64, (Value, Value)> =
+        std::collections::HashMap::new();
+    let mut diag = String::new();
+    let mut enrollments: Option<Vec<Value>> = None;
+
+    for attempt in 0..3 {
+        match client
+            .api_all("/api/v1/users/self/enrollments?include%5B%5D=total_scores&per_page=100")
+            .await
+        {
+            Ok(list) => {
+                if grades_have_scores(&list) {
+                    enrollments = Some(list);
+                    diag.clear();
+                    break;
+                }
+                diag = format!("200 без оценок (попытка {})", attempt + 1);
+            }
+            Err(err) => {
+                if err == "need-login" {
+                    return (grade_map, err, true);
+                }
+                diag = err;
+            }
+        }
+        if attempt < 2 {
+            sleep_ms(if attempt == 0 { 1500 } else { 3000 }).await;
+        }
+    }
+
+    if let Some(list) = enrollments {
+        for e in &list {
+            let Some(course_id) = e.get("course_id").and_then(|v| v.as_i64()) else {
+                continue;
+            };
+            let g = e.get("grades").cloned().unwrap_or(Value::Null);
+            let score = num_or_null(g.get("current_score"));
+            let grade = g
+                .get("current_grade")
+                .and_then(|v| v.as_str())
+                .map(|s| json!(s))
+                .unwrap_or(Value::Null);
+            grade_map.insert(course_id, (score, grade));
+        }
+        return (grade_map, diag, false);
+    }
+
+    // последний шанс: те же баллы per-course (по запросу на курс)
+    for course_id in course_ids {
+        match client
+            .api_all(&format!(
+                "/api/v1/courses/{course_id}/enrollments?include%5B%5D=total_scores&per_page=100"
+            ))
+            .await
+        {
+            Ok(list) => {
+                if let Some(e) = list.iter().find(|e| grades_have_scores(std::slice::from_ref(e))) {
+                    let g = e.get("grades").cloned().unwrap_or(Value::Null);
+                    let score = num_or_null(g.get("current_score"));
+                    let grade = g
+                        .get("current_grade")
+                        .and_then(|v| v.as_str())
+                        .map(|s| json!(s))
+                        .unwrap_or(Value::Null);
+                    grade_map.insert(*course_id, (score, grade));
+                    diag.clear();
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+    if grade_map.is_empty() && diag.is_empty() {
+        diag = "per-course фолбэк тоже без оценок".into();
+    }
+    let missing = grade_map.is_empty();
+    (grade_map, diag, missing)
+}
+
+/// Полный Canvas-синк. Возвращает {"data": payload, "scoresMissing", "scoresDiag"};
+/// Err("need-login") — нет/истекла сессия (JS открывает окно логина и повторяет).
 #[tauri::command]
-pub async fn canvas_sync_native(app: AppHandle) -> Result<String, String> {
+pub async fn canvas_sync_native(app: AppHandle) -> Result<Value, String> {
     let cookies = webview_cookies(&app, &format!("{CANVAS_ORIGIN}/"))?;
     let client = CanvasClient::new(cookies)?;
 
     let raw_courses = client
-        .api_all("/api/v1/courses?enrollment_state=active&include%5B%5D=total_scores&per_page=100")
+        .api_all("/api/v1/courses?enrollment_state=active&include%5B%5D=total_scores&include%5B%5D=enrollments&per_page=100")
         .await?;
 
-    // Оценки курса живут на enrollments (total_scores на этом инстансе ненадёжен)
-    let mut grade_map: std::collections::HashMap<i64, (Value, Value)> =
-        std::collections::HashMap::new();
-    match client
-        .api_all("/api/v1/users/self/enrollments?include%5B%5D=total_scores&per_page=100")
-        .await
-    {
-        Ok(enrollments) => {
-            for e in &enrollments {
-                let Some(course_id) = e.get("course_id").and_then(|v| v.as_i64()) else {
-                    continue;
-                };
-                let g = e.get("grades").cloned().unwrap_or(Value::Null);
-                let score = num_or_null(g.get("current_score"));
-                let grade = g
-                    .get("current_grade")
-                    .and_then(|v| v.as_str())
-                    .map(|s| json!(s))
-                    .unwrap_or(Value::Null);
-                grade_map.insert(course_id, (score, grade));
-            }
-        }
-        Err(err) => {
-            if err == "need-login" {
-                return Err(err);
-            }
-            // прочие ошибки enrollments — как в userscript: курсы с пустыми оценками
-        }
+    let course_ids: Vec<i64> = raw_courses
+        .iter()
+        .filter_map(|c| c.get("id").and_then(|v| v.as_i64()))
+        .collect();
+
+    // Оценки курса: enrollments с ретраями и per-course фолбэком
+    // (total_scores на этом инстансе ненадёжен — оценки ушли в LTI-тул)
+    let (mut grade_map, scores_diag, scores_missing) =
+        fetch_grade_map(&client, &course_ids).await;
+    if scores_missing && scores_diag == "need-login" {
+        return Err("need-login".into());
     }
 
     let mut courses = Vec::new();
@@ -292,6 +382,7 @@ pub async fn canvas_sync_native(app: AppHandle) -> Result<String, String> {
                 "title": title,
                 "type": item_type(a),
                 "due_at": a.get("due_at").cloned().unwrap_or(Value::Null),
+                "lock_at": a.get("lock_at").cloned().unwrap_or(Value::Null),
                 "points_possible": a
                     .get("points_possible")
                     .and_then(|v| v.as_f64())
@@ -318,5 +409,9 @@ pub async fn canvas_sync_native(app: AppHandle) -> Result<String, String> {
         "courses": courses,
         "assignments": assignments,
     });
-    Ok(payload.to_string())
+    Ok(json!({
+        "data": payload,
+        "scoresMissing": scores_missing,
+        "scoresDiag": scores_diag,
+    }))
 }

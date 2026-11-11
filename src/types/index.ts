@@ -123,7 +123,8 @@ export interface CanvasAssignment {
   course_id: number
   title: string
   type: CanvasItemType
-  due_at: string | null // ISO 8601
+  due_at: string | null // ISO 8601 — «Срок»
+  lock_at: string | null // ISO 8601 — «Доступно до»; фолбэк-дедлайн, когда Срока нет
   points_possible: number
   html_url: string
   submitted_at: string | null

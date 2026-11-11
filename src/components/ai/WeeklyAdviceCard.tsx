@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { kk } from "@/i18n"
 import { useAristosDB } from "@/context/DBContext"
 import { buildAdvisorContext } from "@/lib/aiContext"
+import { effectiveDeadline } from "@/lib/canvas"
 import { chatComplete, isAiConfigured, loadAiSettings } from "@/lib/aiClient"
 import type { AcadCalendar, CanvasAssignment, CanvasCourse } from "@/types"
 
@@ -90,11 +91,11 @@ function buildLocalAdvice(ctx: {
   const lines: string[] = []
 
   const upcoming = ctx.canvasAssignments
-    .filter((a) => !a.graded && a.due_at && new Date(a.due_at).getTime() > now)
-    .sort((a, b) => (a.due_at ?? "").localeCompare(b.due_at ?? ""))[0]
-  if (upcoming?.due_at) {
+    .filter((a) => !a.graded && effectiveDeadline(a) && new Date(effectiveDeadline(a)!).getTime() > now)
+    .sort((a, b) => (effectiveDeadline(a) ?? "").localeCompare(effectiveDeadline(b) ?? ""))[0]
+  if (upcoming && effectiveDeadline(upcoming)) {
     const days = Math.ceil(
-      (new Date(upcoming.due_at).getTime() - now) / 86_400_000
+      (new Date(effectiveDeadline(upcoming)!).getTime() - now) / 86_400_000
     )
     lines.push(
       `**${kk.adviceNearest}:** «${upcoming.title}» — ${days <= 0 ? kk.adviceToday : kk.daysN(days)}`

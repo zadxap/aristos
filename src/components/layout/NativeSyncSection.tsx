@@ -78,7 +78,11 @@ export function NativeSyncSection() {
         onStage: (s) => setStage(stageText(s)),
         apply: (payload) => syncCanvas(payload),
       })
-      setStage(kk.syncCanvasOk(res.courses, res.assignments))
+      let text = kk.syncCanvasOk(res.courses, res.assignments)
+      if (res.scoresDiag) {
+        text += ` · ${kk.syncWarnScoresMissing} (${res.scoresDiag})`
+      }
+      setStage(text)
     } catch (err) {
       setStage(errorText(err))
     } finally {

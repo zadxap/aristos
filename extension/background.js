@@ -91,32 +91,100 @@ function extractCode(name, fallback) {
   return match ? match[1].trim() : fallback || name.trim()
 }
 
+function parseScore(raw) {
+  if (typeof raw === 'number') return raw
+  if (raw === null || raw === undefined || raw === '') return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+}
+
 /**
  * Overall course grades live on the enrollments endpoint. Some Canvas instances
  * don't return them via courses?include[]=total_scores, so fetch them separately.
+ * Запрос «мягкий» (падение не валит синк — курсы/тапсырмы продолжают грузиться),
+ * поэтому молчаливая потеря оценок раньше была невидима («—» в полоске оценок).
+ * Ретраим до 3 раз и при ошибке запроса, и при 200-пустышке без оценок; если и
+ * это не помогло — пробуем per-course enrollments (последний шанс) и в любом
+ * случае возвращаем diag с причиной — она видна юзеру в попапе.
  */
-async function fetchGradeMap() {
+async function fetchGradeMap(courseIds = []) {
   const map = new Map()
+  let lastErr = null
+  let empty200 = false
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await sleep(1500 * attempt)
+    try {
+      const enrollments = await apiAll('/api/v1/users/self/enrollments?include[]=total_scores&per_page=100')
+      for (const e of enrollments) {
+        if (!e || !e.course_id) continue
+        const g = e.grades || {}
+        const score = parseScore(g.current_score)
+        map.set(e.course_id, {
+          current_score: score,
+          current_grade: typeof g.current_grade === 'string' ? g.current_grade : null,
+        })
+      }
+      if (map.size > 0) return { map, diag: null }
+      empty200 = true
+      lastErr = new Error('enrollments: 200 без оценок')
+      // дамп формы ответа в консоль service worker — чтобы чинить по факту,
+      // а не по догадкам (личных данных почти нет: только ключи и статусы)
+      const e0 = enrollments[0]
+      console.warn(
+        '[Aristos] enrollments response shape:',
+        JSON.stringify({
+          len: enrollments.length,
+          sampleKeys: e0 ? Object.keys(e0) : null,
+          gradesKeys: e0 && e0.grades ? Object.keys(e0.grades) : null,
+          type: e0 ? e0.type : null,
+          state: e0 ? e0.enrollment_state : null,
+          currentScore: e0 && e0.grades ? e0.grades.current_score : null,
+        }),
+      )
+    } catch (err) {
+      lastErr = err
+    }
+  }
+
+  // последний шанс: та же информация живёт в per-course enrollments
+  let perErr = null
   try {
-    const enrollments = await apiAll('/api/v1/users/self/enrollments?include[]=total_scores&per_page=100')
-    for (const e of enrollments) {
-      if (!e || !e.course_id) continue
-      const g = e.grades || {}
-      map.set(e.course_id, {
-        current_score: typeof g.current_score === 'number' ? g.current_score : null,
-        current_grade: typeof g.current_grade === 'string' ? g.current_grade : null,
-      })
+    for (const id of courseIds) {
+      const ens = await apiAll('/api/v1/courses/' + id + '/enrollments?include[]=total_scores&per_page=100')
+      for (const e of ens) {
+        if (!e || e.course_id !== id) continue
+        const g = e.grades || {}
+        const score = parseScore(g.current_score)
+        if (score !== null) {
+          map.set(id, {
+            current_score: score,
+            current_grade: typeof g.current_grade === 'string' ? g.current_grade : null,
+          })
+          break
+        }
+      }
+    }
+    if (map.size > 0) {
+      console.warn('[Aristos] self/enrollments failed, rescued from per-course enrollments for', map.size, 'courses')
+      return { map, diag: null }
     }
   } catch (err) {
-    console.warn('[Aristos] enrollments fetch failed, course scores will be empty', err)
+    perErr = err
   }
-  return map
+
+  const selfDiag = empty200 ? '200 без оценок ×3' : String((lastErr && lastErr.message) || lastErr)
+  const perDiag = perErr ? String((perErr && perErr.message) || perErr) : 'per-course тоже без баллов'
+  console.warn('[Aristos] enrollments failed after retries and per-course fallback — course scores will be empty', lastErr, perErr)
+  return { map, diag: selfDiag + '; ' + perDiag }
 }
 
 async function collectPayload(onStage) {
   onStage('stageCourses', [], 'Курсы...')
-  const rawCourses = await apiAll('/api/v1/courses?enrollment_state=active&include[]=total_scores&per_page=100')
-  const gradeMap = await fetchGradeMap()
+  // include[]=enrollments — явно: grades курса приезжают в c.enrollments[0].grades,
+  // Canvas был обязан их неявно отдавать при include[]=total_scores, но раз оба
+  // источника разом опустели — не полагаемся на неявное поведение
+  const rawCourses = await apiAll('/api/v1/courses?enrollment_state=active&include[]=total_scores&include[]=enrollments&per_page=100')
+  const { map: gradeMap, diag: gradesDiag } = await fetchGradeMap(rawCourses.map((c) => c.id))
 
   const courses = rawCourses.map((c) => {
     const grades = gradeMap.get(c.id) || {}
@@ -152,6 +220,7 @@ async function collectPayload(onStage) {
         title: a.name || 'Без названия',
         type: itemType(a),
         due_at: a.due_at || null,
+        lock_at: a.lock_at || null, // «Доступно до» — фолбэк-дедлайн без Срока
         points_possible: a.points_possible || 0,
         html_url: a.html_url || CANVAS_ORIGIN + '/courses/' + a.course_id + '/assignments/' + a.id,
         submitted_at: s.submitted_at || null,
@@ -170,6 +239,9 @@ async function collectPayload(onStage) {
     source: 'extension',
     courses,
     assignments,
+    // диагностика (не хранится в дашборде — валидатор её игнорирует):
+    // null если баллы собраны, строка с причиной если нет
+    gradesDiag: gradesDiag,
   }
 }
 
@@ -366,12 +438,20 @@ async function runSync(port) {
         lastSync: payload.syncedAt,
         lastCounts: { courses: payload.courses.length, assignments: payload.assignments.length },
       })
-      await finishSyncState({ kind: 'canvas', lastResult: `Canvas: ${payload.courses.length} курс, ${payload.assignments.length} тапсырма` })
+      // все курсы без баллов = enrollments-запрос так и не доехал (см. fetchGradeMap)
+      const scoresMissing = payload.courses.length > 0 && payload.courses.every((c) => c.current_score === null)
+      await finishSyncState({
+        kind: 'canvas',
+        lastResult: `Canvas: ${payload.courses.length} курс, ${payload.assignments.length} тапсырма`
+          + (scoresMissing ? ` (⚠ баллы${payload.gradesDiag ? ': ' + payload.gradesDiag : ''})` : ''),
+      })
       post(port, {
         type: 'done',
         kind: 'canvas',
         courses: payload.courses.length,
         assignments: payload.assignments.length,
+        scoresMissing,
+        gradesDiag: payload.gradesDiag || null,
       })
     } catch (pushErr) {
       console.warn('[Aristos] push failed, offering file export', pushErr)

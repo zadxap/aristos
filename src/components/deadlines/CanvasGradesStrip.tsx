@@ -1,6 +1,7 @@
 import { GraduationCap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { scoreBadgeVariant } from '@/lib/score-tone'
+import type { AdmissionRatingSource } from '@/lib/grade-scheme'
 import { kk } from '@/i18n'
 import type { CanvasCourse } from '@/types'
 
@@ -16,18 +17,24 @@ const SCORE_TEXT: Record<string, string> = {
  * Canvas courses with their current overall score.
  * Horizontal strip (mobile) or vertical stack (desktop rail); doubles as a
  * course filter for the deadline list (click to toggle).
+ *
+ * Итог по приоритету courseAdmissionRating(): Canvas-итог → официальный
+ * «Рейтинг» из Платонуса (вуз передаёт РК из LTI-тулзы в Платонус) →
+ * «≈рейтинг», вычисленный из тапсырм.
  */
 export function CanvasGradesStrip({
   courses,
   gradedCounts,
   selected,
   onSelect,
+  ratings,
   variant = 'horizontal',
 }: {
   courses: CanvasCourse[]
   gradedCounts: Map<number, number>
   selected: number | 'all'
   onSelect: (courseId: number | 'all') => void
+  ratings?: Map<number, { value: number | null; source: AdmissionRatingSource }>
   variant?: 'horizontal' | 'vertical'
 }) {
   if (courses.length === 0) return null
@@ -52,7 +59,11 @@ export function CanvasGradesStrip({
         )}
       >
         {courses.map((course) => {
-          const tone = scoreBadgeVariant(course.current_score)
+          const entry = ratings?.get(course.id)
+          const value = course.current_score ?? entry?.value ?? null
+          const isComputed = course.current_score === null && entry?.source === 'computed' && value !== null
+          const fromPlatonus = course.current_score === null && entry?.source === 'platonus' && value !== null
+          const tone = scoreBadgeVariant(value)
           const isSelected = selected === course.id
           const graded = gradedCounts.get(course.id) ?? 0
           return (
@@ -71,8 +82,17 @@ export function CanvasGradesStrip({
                 <GraduationCap className={cn('size-3.5 shrink-0', SCORE_TEXT[tone])} />
               </div>
               <div className="mt-1.5 flex items-baseline gap-1">
-                <span className={cn('text-lg font-bold tabular-nums', SCORE_TEXT[tone])}>
-                  {course.current_score !== null ? `${course.current_score}%` : '—'}
+                <span
+                  className={cn('text-lg font-bold tabular-nums', isComputed && 'italic', SCORE_TEXT[tone])}
+                  title={
+                    isComputed
+                      ? kk.canvasComputedScoreHint
+                      : fromPlatonus
+                        ? kk.canvasPlatonusScoreHint
+                        : undefined
+                  }
+                >
+                  {value !== null ? `${isComputed ? '≈' : ''}${value}%` : '—'}
                 </span>
               </div>
               <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground truncate">

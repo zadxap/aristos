@@ -211,8 +211,11 @@ export function platonusCardExtract(year, withModalHtml) {
         const day = Number(dateByCol[col])
         const month = monthByCol[col]
         if (!Number.isFinite(mark) || !Number.isFinite(day) || !month) continue
-        // учебный год начинается с сентября: месяцы 1–8 относятся к year+1
-        const y = month >= 9 ? year : year + 1
+        // выбранному году «2026» соответствует учебный 2026/27: авг–дек → year,
+        // янв–июл → year+1. Раньше граница была на сентябре (month >= 9) и
+        // августовские пары первого семестра (напр. 31.08) уезжали в year+1 —
+        // «Август» вставал последним месяцем в сетке оценок по дням.
+        const y = month >= 8 ? year : year + 1
         out.push({
           code: currentCode,
           kind: currentKind,
