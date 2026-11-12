@@ -19,7 +19,7 @@ import {
 } from '@tauri-apps/plugin-notification'
 import { isTauriMobile } from '@/lib/tauri'
 import { effectiveDeadline } from '@/lib/canvas'
-import { loadNotifSettings } from '@/lib/notifications'
+import { loadNotifSettings, NOTIF_ICON, NOTIF_ICON_COLOR } from '@/lib/notifications'
 import { kk } from '@/i18n'
 import type { AcadCalendar, CanvasAssignment } from '@/types'
 
@@ -233,6 +233,8 @@ export async function refreshNativeReminders(
           inboxLines: e.inboxLines,
           summary: e.summary,
           group: e.group,
+          icon: NOTIF_ICON,
+          iconColor: NOTIF_ICON_COLOR,
           channelId: e.channel,
           schedule: Schedule.at(new Date(e.fireAt), false, true),
         })

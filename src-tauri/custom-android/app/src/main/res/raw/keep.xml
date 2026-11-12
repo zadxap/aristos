@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ресурсный шринкер вырезает ресурсы без статических ссылок: ic_notification
+     используется только строкой из JS (plugins NOTIF_ICON) — сохраняем явно.
+     aristos_file_paths и виджеты живы за счёт ссылок из манифеста. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification" />

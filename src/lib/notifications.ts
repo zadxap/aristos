@@ -26,6 +26,14 @@ export interface NotifSettings {
 const SETTINGS_KEY = "aristos-notif-settings-v1"
 const SHOWN_KEY = "aristos-notif-shown-v1"
 
+/** Монохромная иконка и акцент для нативных уведомлений. ВАЖНО:
+ *  plugins.notification в tauri.conf.json НЕ трогать — Rust-сторона
+ *  плагина не объявляет конфиг, любая секция = abort при старте
+ *  (PluginInitialization: «invalid type: map, expected unit»). Поэтому
+ *  icon/iconColor задаются на каждое уведомление. */
+export const NOTIF_ICON = "ic_notification"
+export const NOTIF_ICON_COLOR = "#38BDF8"
+
 const DEFAULT_SETTINGS: NotifSettings = {
   lessons: true,
   deadlines: true,
@@ -125,7 +133,12 @@ export async function notifyOncePerDay(
     if (isTauri()) {
       if (!(await isPermissionGranted())) return
       markShown(tag, dayKey)
-      await sendNotification({ title, body })
+      await sendNotification({
+        title,
+        body,
+        icon: NOTIF_ICON,
+        iconColor: NOTIF_ICON_COLOR,
+      })
       return
     }
     if (Notification.permission !== "granted") return

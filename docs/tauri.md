@@ -244,11 +244,17 @@ Web Notification API (через Service Worker, если доступен). П�
 Разрешения манифеста: `POST_NOTIFICATIONS`,
 `SCHEDULE_EXACT_ALARM`, `VIBRATE`.
 
-Иконка/акцент: `tauri.conf.json → plugins.notification` задаёт дефолтные
-`icon: ic_notification` (белый вектор-глиф «A» в
-`custom-android/.../res/drawable/`; до этого плагин подставлял системный
-`ic_dialog_info` — серый квадрат) и `iconColor: #38BDF8` (setColor — тинт
-иконки). PWA-путь использует монохромный
+Иконка/акцент: **секция `plugins.notification` в `tauri.conf.json`
+запрещена** — Rust-сторона плагина не объявляет конфиг, и любая карта там
+валит приложение при старте
+(`PluginInitialization("notification", "... invalid type: map, expected
+unit")`, panic-abort; так падали 0.1.1–0.1.3). Иконка и цвет задаются на
+каждое уведомление из JS: `icon: "ic_notification"` (белый вектор-глиф «A»
+в `custom-android/.../res/drawable/`; без него плагин подставляет
+системный `ic_dialog_info`) и `iconColor: "#38BDF8"` (setColor) — константы
+`NOTIF_ICON`/`NOTIF_ICON_COLOR` в `src/lib/notifications.ts`. Ресурс
+защищён от ресурсного шринкера через `res/raw/keep.xml` (`tools:keep`) —
+он ссылается только строкой из JS. PWA-путь использует монохромный
 `public/icons/notification-badge.png` (белый глиф на прозрачном; прежний
 непрозрачный `icon-192.png` Android рисовал белым квадратом).
 
