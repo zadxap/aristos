@@ -99,7 +99,7 @@ export function DeadlineBars({ assignments }: { assignments: CanvasAssignment[] 
         ) : (
           <div style={{ width: '100%', height: 220 }}>
             <ResponsiveContainer>
-              <BarChart data={data} margin={{ left: -18, right: 8, top: 8, bottom: 0 }}>
+              <BarChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke={GRID_STROKE} strokeDasharray="3 3" />
                 <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} />
                 <YAxis allowDecimals={false} tick={AXIS_TICK} axisLine={false} tickLine={false} width={32} />

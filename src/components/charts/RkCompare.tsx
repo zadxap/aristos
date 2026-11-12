@@ -33,7 +33,7 @@ export function RkCompare({ data }: { data: RkCompareRow[] }) {
         ) : (
           <div style={{ width: '100%', height: 220 }}>
             <ResponsiveContainer>
-              <BarChart data={rows} margin={{ left: -18, right: 8, top: 8, bottom: 0 }}>
+              <BarChart data={rows} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke={GRID_STROKE} strokeDasharray="3 3" />
                 <XAxis
                   dataKey="code"

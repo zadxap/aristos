@@ -107,7 +107,7 @@ export function GradeDynamics({ assignments }: { assignments: CanvasAssignment[]
         ) : (
           <div style={{ width: '100%', height: 220 }}>
             <ResponsiveContainer>
-              <AreaChart data={data} margin={{ left: -18, right: 8, top: 8, bottom: 0 }}>
+              <AreaChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke={GRID_STROKE} strokeDasharray="3 3" />
                 <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} minTickGap={28} />
                 <YAxis domain={[0, 100]} tick={AXIS_TICK} axisLine={false} tickLine={false} width={32} />
