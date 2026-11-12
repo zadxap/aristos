@@ -1,6 +1,7 @@
-import type { AcadCalendar, CanvasAssignment, CanvasCourse, PlatonusYearRecord, Subject } from '@/types'
+import type { AcadCalendar, CanvasAssignment, CanvasCourse, DayOfWeek, PlatonusYearRecord, Schedule, Subject } from '@/types'
 import { assignmentWeek, computeCourseGrades } from '@/lib/grade-scheme'
 import { effectiveDeadline } from '@/lib/canvas'
+import { getAcademicWeek } from '@/lib/academic-week'
 
 export interface AdvisorContextInput {
   activeCourse: number
@@ -10,17 +11,54 @@ export interface AdvisorContextInput {
   platonusYears: PlatonusYearRecord[]
   subjects: Subject[]
   calendar?: AcadCalendar
+  /** Расписание активного курса/семестра — для «какой сейчас урок» */
+  schedule?: Schedule
 }
+
+const DAY_KEYS: DayOfWeek[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
 /** Compact text summary of the student's situation for the AI advisor. */
 export function buildAdvisorContext(input: AdvisorContextInput): string {
   const lines: string[] = []
-  const { activeCourse, activeSemester, canvasCourses, canvasAssignments, platonusYears, subjects, calendar } = input
+  const { activeCourse, activeSemester, canvasCourses, canvasAssignments, platonusYears, subjects, calendar, schedule } = input
 
   lines.push(`Студент: ${activeCourse}-курс, ${activeSemester}-семестр`)
 
-  // Canvas courses with РК breakdown
   const semester = calendar?.semesters?.find((s) => s.semester === activeSemester)
+  const nowDate = new Date()
+  if (semester) {
+    lines.push(`Учебная неделя: ${getAcademicWeek(nowDate, semester.semester_start, semester.total_weeks)} из ${semester.total_weeks}`)
+  }
+
+  // Расписание на сегодня и завтра — без этого модель отвечала «данных нет»
+  // на «какой сейчас урок» и выдумывала расписание
+  if (schedule?.schedule?.length) {
+    const fmtDay = (offsetDays: number, label: string) => {
+      const d = new Date(nowDate)
+      d.setDate(d.getDate() + offsetDays)
+      const dayKey = DAY_KEYS[d.getDay()]
+      const lessons = schedule.schedule
+        .filter((e) => e.day === dayKey)
+        .sort((a, b) => a.start.localeCompare(b.start))
+      lines.push(`\n## ${label} (${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}):`)
+      if (lessons.length === 0) {
+        lines.push('- пар нет')
+        return
+      }
+      for (const e of lessons) {
+        const subj = subjects.find((s) => s.subject_id === e.subject_id)
+        lines.push(
+          `- ${e.start}–${e.end} ${subj?.subject_name ?? e.subject_name}` +
+            (e.type ? ` (${e.type})` : '') +
+            (e.room ? `, ауд. ${e.room}` : '')
+        )
+      }
+    }
+    fmtDay(0, 'Расписание на сегодня')
+    fmtDay(1, 'Расписание на завтра')
+  }
+
+  // Canvas courses with РК breakdown
   if (canvasCourses.length > 0) {
     lines.push('\n## Текущие курсы (Canvas):')
     for (const course of canvasCourses) {
@@ -121,6 +159,23 @@ export function buildAdvisorContext(input: AdvisorContextInput): string {
   const relevant = subjects.filter((s) => s.course === activeCourse && s.semester === activeSemester)
   if (relevant.length > 0) {
     lines.push(`\n## Предметы семестра (кредиты): ${relevant.map((s) => `${s.subject_name} (${s.credits_ects})`).join(', ')}`)
+  }
+
+  // Темы текущей недели из программ предметов (subjects[].topics)
+  if (semester) {
+    const weekNum = getAcademicWeek(nowDate, semester.semester_start, semester.total_weeks)
+    const topicLines: string[] = []
+    for (const s of relevant) {
+      for (const t of s.topics ?? []) {
+        if (t.week === weekNum) {
+          topicLines.push(`- ${s.subject_name} — ${t.topic}${t.type ? ` (${t.type})` : ''}`)
+        }
+      }
+    }
+    if (topicLines.length > 0) {
+      lines.push(`\n## Темы недели ${weekNum}:`)
+      lines.push(...topicLines)
+    }
   }
 
   const text = lines.join('\n')

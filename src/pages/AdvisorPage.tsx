@@ -103,6 +103,7 @@ export function AdvisorPage() {
     activeCourse,
     activeSemester,
     calendar,
+    schedule,
   } = useAristosDB()
   const [settings, setSettings] = useState<AiSettings>(() => loadAiSettings())
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -262,6 +263,7 @@ export function AdvisorPage() {
         platonusYears,
         subjects,
         calendar,
+        schedule,
       })
       const chatHistory = history
         .slice(-8)
@@ -290,9 +292,11 @@ export function AdvisorPage() {
       }))
     } finally {
       setLoading(false)
-      // Вернуть фокус в поле ввода — иначе после каждого сообщения приходится
-      // кликать по чату заново.
-      inputRef.current?.focus()
+      // Вернуть фокус в поле ввода только на десктопе — на телефоне выскочившая
+      // клавиатура закрывает половину экрана, и ответ не прочитать.
+      if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+        inputRef.current?.focus()
+      }
     }
   }
 
@@ -442,7 +446,7 @@ export function AdvisorPage() {
           messages.map((msg, i) => (
             <div
               key={i}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`chat-in flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={cn(
@@ -487,7 +491,7 @@ export function AdvisorPage() {
         )}
 
         {loading && (
-          <div className="flex justify-start">
+          <div className="chat-in flex justify-start">
             <div className="flex items-center gap-2 rounded-2xl rounded-tl-xs border border-border/80 bg-card px-4 py-2.5 shadow-2xs">
               <Sparkles className="size-3.5 animate-spin text-primary" />
               <p className="animate-pulse text-xs text-muted-foreground">

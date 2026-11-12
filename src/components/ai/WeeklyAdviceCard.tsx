@@ -138,6 +138,7 @@ export function WeeklyAdviceCard() {
     activeCourse,
     activeSemester,
     calendar,
+    schedule,
   } = useAristosDB()
   const [settings] = useState(() => loadAiSettings())
   const [advice, setAdvice] = useState<string | null>(() => {
@@ -179,6 +180,7 @@ export function WeeklyAdviceCard() {
         platonusYears,
         subjects,
         calendar,
+        schedule,
       })
       const result = await chatComplete(
         settings,

@@ -3,7 +3,8 @@
 > Документ для разработки и сопровождения Tauri-версии Aristos. Дополняет
 > `CONTEXT.md` (краткий контекст проекта) и лендинг `aristoslanding.vercel.app/docs/tauri`
 > (пользовательское описание). Все факты — из кода репозитория.
-> Версия Tauri: 2 (`@tauri-apps/api` 2.12, CLI 2.12). Identifier: `kz.yessenov.aristos`.
+> Версия: **0.1.4** (0.1.1–0.1.3 не работали — крэш конфига, см. §4.3).
+> Tauri 2 (`@tauri-apps/api` 2.12, CLI 2.12). Identifier: `kz.yessenov.aristos`.
 
 ---
 
@@ -11,11 +12,14 @@
 
 Aristos — один фронтенд (Vite + React 19 + TS + Tailwind 4), три дистрибуции:
 
-| Дистрибуция | Оболочка | Синк Canvas/Платонус | Напоминания | Виджеты |
-|---|---|---|---|---|
-| **PWA** (Vercel, `aristoss.vercel.app`) | браузерная вкладка + Service Worker | MV3-расширение (`extension/`) | in-app агент (NotificationAgent) | — |
-| **Desktop** (Tauri: Linux / Windows / macOS) | системный webview (WebKitGTK / WebView2 / WKWebView) | **нативный** (скрытое webview-окно, замена расширения) | in-app агент через нативный плагин | — |
-| **Android** (Tauri APK, sideload) | Android WebView | нативный | **запланированные** напоминания (работают при закрытом приложении) | **3 виджета** (RemoteViews) |
+| | **PWA** (Vercel, `aristoss.vercel.app`) | **Desktop** (Tauri: Linux/Win/macOS) | **Android** (Tauri APK, sideload) |
+|---|---|---|---|
+| Оболочка | браузерная вкладка + Service Worker | системный webview (WebKitGTK / WebView2 / WKWebView) | Android WebView |
+| Синк Canvas/Платонус | MV3-расширение (`extension/`) | **нативный v2** (§3): Canvas — Rust+reqwest, Платонус — webview-инжект | нет нативного синка — данные через **облако** (NativeSyncSection скрыта на мобильных) |
+| Напоминания | in-app агент (NotificationAgent) | in-app агент через нативный плагин | **запланированные** (работают при закрытом приложении) + утренний дайджест |
+| Виджеты | — | — | **3 виджета** (RemoteViews, адаптивная тёмная/светлая палитра) |
+| Обновления | — | tauri-plugin-updater (подпись minisign) | one-tap: APK в кеш → системный установщик (§4.4) |
+| PDF | `window.open(blob)` | роут `/pdf/:id` (pdfjs) | роут `/pdf/:id` (WebView не рендерит PDF) |
 
 iOS нативно не делается — там работает PWA («на экран Домой»).
 
@@ -26,18 +30,21 @@ iOS нативно не делается — там работает PWA («на
 
 ### Что изменилось по сравнению с PWA
 
-1. **Синк без расширения.** Вместо MV3-расширения — скрытое webview-окно
-   `harvest`, в которое инжектятся те же коллекторы (порты userscript-логики).
-   Нет CORS-ограничений расширения и нет троттлинга MV3-воркера.
+1. **Синк без расширения (desktop).** Canvas собирается нативно в Rust из
+   кук webview; Платонус — DOM-harvest в webview-окне, доставка через
+   канал заголовка. Нет CORS-ограничений расширения и нет троттлинга
+   MV3-воркера. На Android нативного синка нет — данные через облако.
 2. **Роутер.** В Tauri — `HashRouter` (path-роутинг под кастомным протоколом
    ненадёжен), на вебе — прежний `BrowserRouter` (`src/App.tsx:18`).
 3. **Уведомления.** Транспорт — `@tauri-apps/plugin-notification` вместо
-   Web Notification API; на Android добавляется планирование на неделю вперёд.
-4. **Виджеты Android** (только мобильная ветка) — данные через JSON-снапшот
-   в файл приложения.
+   Web Notification API; на Android добавляется планирование на неделю
+   вперёд, дайджест дня, группировка в шторке.
+4. **Виджеты Android** — данные через JSON-снапшот в файл приложения.
 5. **PDF.** Android WebView не рендерит PDF → встроенный просмотрщик
-   `/pdf/:id` на pdfjs-dist (на вебе по-прежнему `window.open(blob:)`).
-6. **База данных та же** — IndexedDB `aristos_db`, бекапы/JSON-конфиги/
+   `/pdf/:id` на pdfjs-dist.
+6. **Канал обновлений** — desktop: тихая установка с проверкой подписи;
+   Android: скачивание APK и системный установщик в один тап.
+7. **База данных та же** — IndexedDB `aristos_db`, бекапы/JSON-конфиги/
    облачный синк полностью совместимы с PWA.
 
 ---
@@ -56,8 +63,9 @@ isTauriMobile()  // isTauri() && /Android|iPhone|iPad/i.test(UA)
 | Место | Условие | Поведение |
 |---|---|---|
 | `src/App.tsx` | `isTauri()` | `HashRouter` вместо `BrowserRouter` |
-| `src/components/layout/SideMenu.tsx` (NativeSyncSection) | `isTauri() && !isTauriMobile()` | секция нативного синка видна только на **desktop**-Tauri |
-| `src/components/layout/NotificationAgent.tsx` | `isTauriMobile()` | ветка мобильной Tauri: `refreshNativeReminders` + `pushWidgetSnapshot` |
+| `SideMenu.tsx:408` (NativeSyncSection) | `isTauri() && !isTauriMobile()` | секция нативного синка видна только на **desktop**-Tauri |
+| `SideMenu.tsx:411` (UpdateSection) | `isTauri()` | секция обновлений — весь Tauri |
+| `NotificationAgent.tsx` | `isTauriMobile()` | ветка мобильной Tauri: `refreshNativeReminders` + `pushWidgetSnapshot` |
 | `src/lib/reminders.ts` | `isTauriMobile()` | планирование нативных напоминаний (на десктопе плагин доставил бы «запланированное» немедленно — поэтому там only in-app агент) |
 | `src/lib/widget-snapshot.ts` | `isTauri()` | push снапшота для виджетов (на десктопе Rust-команда no-op) |
 | `src/lib/notifications.ts` | `isTauri()` | транспорт плагина vs Web Notification API |
@@ -65,131 +73,139 @@ isTauriMobile()  // isTauri() && /Android|iPhone|iPad/i.test(UA)
 
 ---
 
-## 3. Нативный синк Canvas/Платонус (замена расширения)
+## 3. Нативный синк v2 (11.11) — замена расширения
 
-### 3.1 Механика
+### 3.1 Почему v2
 
-Rust создаёт webview-окно с лейблом `harvest` (видимое — только для логина,
-иначе скрытое), которое грузит внешний сайт. JS-оркестратор из фронтенда
-(`src/lib/native-sync.ts`) инжектит в окно самодостаточные скрипты через
-команду `sync_eval`:
+Remote-IPC с внешних страниц (v1: инжект-скрипты звали
+`window.__TAURI__.core.invoke('sync_payload')` через capability `remote-sync`)
+оказался ненадёжен — сообщения периодически не доходили, синк висел на
+спиннере. Пере-архитектура: **Canvas убран из webview вообще** (чистый Rust),
+**Платонус перешёл на доставку через заголовок окна**. Команда `sync_payload`
+и `capabilities/remote-sync.json` остались в коде как задел — драйвер их
+больше не использует.
 
-- `src/lib/injected/canvas-collector.js` — порт userscript-коллектора Canvas:
-  same-origin `fetch /api/v1/` под живой сессией (cookies + CSRF из куки
-  `_csrf_token` или `window.ENV.csrfToken`; PAT запрещены админами), пагинация
-  через `Link`-заголовок, нормализация. 401 → сообщение `need-login`.
-- `src/lib/injected/platonus-page.js` — порт platonus-inpage из расширения:
-  драйвер с режимами `discover` (studentID из `window.student`, доступные
-  годы/семестры из селектов) и `harvest` (парсер карточек журнала v3:
-  полное имя — в `title`-атрибуте, донут — `data-percent`, пары
-  «значение / подпись» — из футера, `data-id` = subjectID; оценки по дням —
-  кликом по каждой карточке и съёмом `#marksModal`).
+### 3.2 Canvas — полностью в Rust (`src-tauri/src/canvas.rs`)
 
-Параметры драйвера подставляются **перед** телом скрипта:
-`window.__ARISTOS_PARAMS__ = {...}`.
+Сессия берётся из **cookie-jar webview** (общий у всех окон; юзер логинится
+в видимом окне приложения — куки персистентны между запусками). Запросы
+делает reqwest с заголовками `Cookie` + `X-CSRF-Token` (кука `_csrf_token`,
+percent-decode). Инжект-скрипт `canvas-collector.js` **удалён**.
 
-Скрипты на внешних страницах отдают результат IPC-командой
-`window.__TAURI__.core.invoke('sync_payload', { json })` (доступна благодаря
-`withGlobalTauri: true` в `tauri.conf.json`). Rust рассылает событие
-`sync-payload` в main-окно, где `native-sync.ts` раздаёт его waiters'ам.
-В отличие от MV3-расширения, ожидания живут на самой странице — `setTimeout`
-в webview приложения **не троттлится** до минуты, как service worker.
-
-### 3.2 Rust-команды (`src-tauri/src/sync.rs`, `lib.rs`)
+Обе команды — `async`: синхронная `cookies()` внутри запроса документированно
+deadlock'ает на Windows.
 
 | Команда | Назначение |
 |---|---|
-| `sync_open(url, visible)` | открыть/переоткрыть `harvest`. При смене URL: закрыть и ждать фактического исчезновения лейбла (40 × 50 мс), чтобы не поймать гонку «label already exists». Окно 940×720, заголовок «Aristos Sync» |
-| `sync_eval(js)` | исполнить JS в harvest-окне (инжект-скрипты) |
-| `sync_url()` | текущий URL harvest — детект конца логина |
-| `sync_diag()` | `{url, title}` harvest для быстрой диагностики отказа: если IPC не дошёл, скрипты пишут в `document.title` breadcrumb `ARISTOS_INJ` (инжект состоялся) или `ARISTOS_E\|причина` |
-| `sync_close()` | закрыть harvest |
-| `sync_payload(json)` | **вызывается извне** — из инжект-скриптов на внешних страницах; эмитит `sync-payload` в main |
-| `write_widget_data(data)` | JSON-снапшот для Android-виджетов (см. §5); вне Android — no-op |
+| `canvas_session_state` | `{hasSession, cookieCount}`; hasSession = в куках есть `_csrf_token` |
+| `canvas_sync_native` | полный сбор → `{data: payload, scoresMissing, scoresDiag}`; `Err("need-login")` — сессии нет/истекла |
 
-### 3.3 Права IPC (capabilities / permissions)
+Механика `canvas_sync_native` (порт userscript-коллектора):
+
+- `/api/v1/courses?enrollment_state=active&include[]=total_scores&include[]=enrollments&per_page=100`;
+- пагинация по `Link`-заголовку (`rel="next"`), лимит **50 страниц**;
+- `/api/v1/courses/{id}/assignments?include[]=submission&order_by=due_at` —
+  провал одного курса не роняет синк (как в userscript); `published=false`
+  пропускается;
+- **оценки курсов** (вуз вынес итоги в LTI-тул, грейдбук отдаёт `null`):
+  `/users/self/enrollments` — до **3 попыток** с паузами 1.5с/3с (неудача —
+  и ошибка, и «200 без оценок»), затем **per-course фолбэк**
+  `/courses/{id}/enrollments`; терпимый парсинг (строка-число тоже годится);
+  итог — `scoresMissing` + строка `scoresDiag` (мягкий сбой, синк успешен);
+- нормализация в Rust: `item_type` (quiz/discussion/other/assignment по
+  submission_types), `extract_code` (код из `(…)` в конце названия),
+  сбор `lock_at` («Доступно до» — фронт считает дедлайном через
+  `effectiveDeadline()`), submission-поля (submitted_at/score/graded/
+  late/missing).
+
+### 3.3 Платонус — webview-инжект + title-канал
+
+DOM-harvest остаётся в инжект-драйвере `src/lib/injected/platonus-page.js`
+(парсер карточек v3: полное имя — в `title`-атрибуте, донут — `data-percent`,
+пары «значение / подпись» — из футера, `data-id` = subjectID; оценки по дням —
+кликами по карточкам + съём `#marksModal`; режимы `discover`/`harvest`;
+параметры через `window.__ARISTOS_PARAMS__`). Август-фикс дат
+(`month >= 8 ? year : year+1`) в порту.
+
+Доставка результата — **канал заголовка окна**:
+
+1. Драйвер шлёт сообщение чанками: `document.title = "ARISTOS_D|idx|total|chunk"`
+   (single-chunk — без ожидания ACK).
+2. Хост (`waitPlatonusMessage` в `native-sync.ts`) поллит `sync_diag`
+   каждые **350 мс**, собирает чанки по idx.
+3. Подтверждение чтения — `sync_eval` ставит `window.__ARISTOS_ACK = idx+1`,
+   после чего драйвер шлёт следующий чанк (page-side таймаут на ACK).
+4. Собранное JSON-сообщение матчится по типу; `progress` уходит в UI, не копясь.
+5. Ошибка драйвера — `ARISTOS_E|причина` в title → бросается как есть.
+
+`window.__TAURI__` на внешних страницах больше **не нужен**.
+
+### 3.4 Rust-команды harvest-окна (`src-tauri/src/sync.rs`, `lib.rs`)
+
+| Команда | Назначение |
+|---|---|
+| `sync_open(url, visible)` | открыть/переоткрыть `harvest`. При смене URL: закрыть и ждать фактического исчезновения лейбла (40 × 50 мс) — против гонки «label already exists». Окно 940×720, «Aristos Sync» |
+| `sync_eval(js)` | исполнить JS в harvest (инжект-драйвер, ACK) |
+| `sync_url()` | текущий URL harvest — детект конца логина |
+| `sync_diag()` | `{url, title}` — хост поллит title-канал и диагностирует отказ |
+| `sync_close()` | закрыть harvest |
+| `sync_payload(json)` | v1-IPC (эмит `sync-payload` в main) — **задел, драйвером не используется** |
+| `write_widget_data(data)` | JSON-снапшот Android-виджетов (§5); вне Android — no-op |
+| `download_update(url)` / `install_apk(path)` | канал обновлений (§4.4) |
+
+### 3.5 Права IPC (capabilities / permissions)
 
 - `capabilities/default.json` — окно `main`: `core:default`,
-  `notification:default`, `allow-write-widget-data`, `allow-sync-open/eval/url/diag/close`.
-- `capabilities/remote-sync.json` — окно `harvest`, **remote-URLs**
-  `https://canvas.yu.edu.kz/*`, `https://platonus.yu.edu.kz/*`,
-  `https://id.yu.edu.kz/*` (SSO-домен): только `allow-sync-payload`. Внешние
-  страницы не получают прочих прав.
-- `permissions/aristos.toml` — ACL собственных команд приложения: каждый
-  `allow-*` = `commands.allow = [...]` для соответствующей Rust-команды.
-  Из capabilities ссылки идут на идентификаторы напрямую.
+  `notification:default`, `updater:default`, `process:default`,
+  `opener:default` + собственные `allow-write-widget-data`,
+  `allow-sync-open/eval/url/diag/close`, `allow-sync-payload`,
+  `allow-canvas-session-state`, `allow-canvas-sync-native`,
+  `allow-download-update`, `allow-install-apk`.
+- `capabilities/remote-sync.json` — окно `harvest`, remote-URLs
+  canvas/platonus/id.yu.edu.kz → только `allow-sync-payload`. **Задел v1**.
+- `permissions/aristos.toml` — ACL собственных команд: каждый `allow-*` =
+  `commands.allow` для соответствующей Rust-команды.
 
-### 3.4 Протокол сообщений (harvest → native-sync.ts)
-
-Канал: событие `sync-payload` со строкой JSON. Типы сообщений:
-
-| `type` | Кто шлёт | Смысл |
-|---|---|---|
-| `canvas` | canvas-collector | успех: `msg.json` = CanvasSyncPayload |
-| `platonus-discovered` | platonus-page (mode `discover`) | `studentID`, `periods[]`, `previewCount` |
-| `platonus-period` | platonus-page (mode `harvest`) | `record` = PlatonusYearRecord периода |
-| `need-login` | оба | сессии нет — фронт открывает окно логина |
-| `error` | оба | `msg.message` — причина |
-| `progress` | platonus-page | `{stage:'platonus-marks', year, term, idx, total}` — мимолётный, не копится в очереди |
-
-Доставка через очередь + `waitMessage(match, timeout)`: если сообщение
-пришло раньше, чем вызван waiter, — достаётся из очереди (не теряется).
-
-### 3.5 Потоки синка
+### 3.6 Потоки синка
 
 **Canvas** (`runCanvasSync`):
-1. `sync_open(canvas.yu.edu.kz, hidden)` → `sync_eval(canvas-collector)` →
-   ждём `canvas|need-login|error` (таймаут **120 с**).
-2. `need-login` → окно логина `/login/canvas` (видимое) → поллинг `sync_url`
-   каждые 1.5 с до ухода со страницы `/login` (**два стабильных опроса подряд**
-   — SSO мигает промежуточными адресами), лимит **6 мин** → ретрай сбора.
-3. Валидация **существующим** `isCanvasSyncPayload` → `useDB().syncCanvas`
-   (тот же путь, что у расширения: React-стейт + авто-маппинг + авто-push в
-   облако) → `sync_close`.
+1. Превентивная проверка `canvas_session_state`: мертвая сессия → сразу окно
+   логина, а не спиннер до 401.
+2. Окно логина `/login/canvas` (видимое) → поллинг `canvas_session_state`
+   каждые 1.5 с, лимит **6 мин**.
+3. `canvas_sync_native`; `need-login` посреди синка → окно логина и повтор.
+4. `payload.syncedAt` проставляется JS → валидация `isCanvasSyncPayload` →
+   `useDB().syncCanvas` (тот же путь, что у расширения: React-стейт +
+   авто-маппинг + авто-push в облако). `scoresDiag` показывается как
+   предупреждение при успехе.
 
 **Платонус** — двухшаговый:
 1. **Discover** (`discoverPlatonus`): `/student_register` (hidden) → драйвер
-   `mode:'discover'` (таймаут **90 с**) → `studentID` сохраняется в settings
-   (`platonusStudentID`), периоды показываются в UI чекбоксами
-   (предвыбраны все).
+   `mode:'discover'` (таймаут **120 с**) → `studentID` сохраняется в settings
+   (`platonusStudentID`), периоды — чекбоксы в UI (предвыбраны все).
 2. **Import** (`runPlatonusSync(chosen)`): для каждого периода —
    `/student_register?studentID={id}&year={Y}&term={T}` → драйвер
-   `mode:'harvest'` (таймаут **15 мин** — съём оценок по дням кликами долгий)
-   → `record`. Если `studentID` не сохранён — тихий discover внутри.
-   `need-login` → видимое окно SSO (вход завершён, когда вернулись на
-   `platonus.yu.edu.kz` вне `id.yu.edu.kz`/`login`/`oauth`) → период
-   переигрывается (`i--`). В конце собирается payload
-   `aristos-platonus-sync` (source не важен — валидатор тот же) →
-   `useDB().syncPlatonus` → `sync_close`.
+   `mode:'harvest'` (таймаут **20 мин** — съём оценок кликами долгий) →
+   `record`. `need-login` → видимое окно SSO (вход завершён, когда вернулись
+   на `platonus.yu.edu.kz` вне `id.yu.edu.kz`/`login`/`oauth`, **два
+   стабильных опроса подряд**) → период переигрывается (`i--`). В конце
+   payload `aristos-platonus-sync` → валидация → `useDB().syncPlatonus`.
 
-Гейт реентерабельности: `busy` в `native-sync.ts` — вторая попытка во время
-синка бросает `sync-already-running`. Очередь сообщений чистится при старте.
+Гейт реентерабельности: `busy` — вторая попытка бросает `sync-already-running`.
 
-### 3.6 UI (`NativeSyncSection.tsx` в SideMenu, desktop-Tauri only)
+### 3.7 UI и ошибки (`NativeSyncSection.tsx`, desktop-Tauri only)
 
 Кнопки: «Canvas синк» → этапы/ошибки текстом; «Найти доступные периоды»
 (discover) → чекбоксы `ГГГГ/семестр` → «Импорт выбранных». Прогресс Платонуса:
-«период i/N» и «оценки по дням idx/total». Этапы и ошибки — машины-ключи
-(`SyncStage`, коды ошибок) → i18n-ключи `sync*` в `src/i18n/{kk,ru}.ts`.
+«период i/N», «оценки по дням idx/total». Ошибки-машины:
+`need-login` / `login-timeout` / `sync-already-running` / `sync-timeout` /
+`platonus-no-periods` / `platonus-empty` / `*-invalid-payload` + сырые
+`ARISTOS_E|…` и `diag-no-window` (harvest закрылся).
 
-Ошибки-машины: `need-login` / `login-timeout` / `sync-already-running` /
-`sync-timeout` / `platonus-no-periods` / `platonus-empty` /
-`canvas-invalid-payload` / `platonus-invalid-payload` (+ сырые сообщения
-`error`-сообщений скриптов).
-
-**Семантика данных сохранена**: `applyCanvasSync`/`applyPlatonusSync` по-прежнему
-заменяют сторы целиком (полный снапшот, не дельта). В типе payload `source`
-добавлен вариант `'app'`.
-
-### 3.7 Известные нюансы
-
-- Сессия webview живёт в данных приложения — при сбое кнопка синка сама
-  предложит окно логина (need-login обрабатывается автоматически).
-- Диагностика отказа: `sync_diag` → если в `title` harvest-окна `ARISTOS_E|...`,
-  там причина (IPC недоступен / ошибка скрипта). `ARISTOS_INJ` = инжект
-  состоялся, но ответ не долетел.
-- Троттлинга нет, но длительность периода Платонуса ограничена таймаутом
-  15 мин — при расширении периодов стоит помнить про суммарное время.
+**Семантика данных сохранена**: `applyCanvasSync`/`applyPlatonusSync` заменяют
+сторы целиком (полный снапшот). Payload `source: 'app'`; поле `lock_at`
+добавлено опционально (старые записи переживаются, появится после первого
+синка).
 
 ---
 
@@ -226,8 +242,9 @@ Web Notification API (через Service Worker, если доступен). П�
 Отбор повторяет фильтры NotificationAgent:
 - **Пары**: дни недели из расписания, уведомление за `minutesBefore` до
   начала; вне семестра и в праздники (`acad_calendar`) — тишина.
-- **Дедлайны Canvas**: не сданные (`!submitted_at`), за 24 ч до `due_at`
-  (если уже ближе — через минуту).
+- **Дедлайны Canvas**: не сданные (`!submitted_at`), за 24 ч до
+  **эффективного дедлайна** (`effectiveDeadline`: due_at → lock_at; если уже
+  ближе — через минуту).
 - **Дайджест дня**: раз в сутки в 07:30 — одно тихое уведомление со списком
   пар дня (InboxStyle, до 8 строк «09:00 — Пән»), канал `aristos-digest`
   (Default, без вибрации), тумблер `digest` в настройках. На PWA дайджест
@@ -260,14 +277,31 @@ unit")`, panic-abort; так падали 0.1.1–0.1.3). Иконка и цве
 
 ### 4.4 Канал обновлений (src/lib/app-update.ts)
 
+**Хостинг — sync-воркер** (`https://aristos-sync.aristoss.workers.dev`):
+
+| Endpoint | Доступ | Назначение |
+|---|---|---|
+| `PUT /api/app/file/:name` | `X-App-Upload-Secret` | бинарник релиза (≤25 МБ, KV) |
+| `PUT /api/app/meta` | `X-App-Upload-Secret` | JSON `{version, notes, files}` |
+| `GET /api/app/latest` | публично | `{found, version, notes, apkUrl}` |
+| `GET /api/app/file/:name` | публично | скачивание (правильный Content-Type) |
+
+Секрет — `APP_UPLOAD_SECRET` в `sync-worker/wrangler.toml` (CI читает его из
+этого же файла). После изменения воркера: `cd sync-worker && npx wrangler deploy`.
+
 - **Desktop** — `tauri-plugin-updater`: `latest.json` на воркере
   (endpoint/pubkey в `tauri.conf.json`), `downloadAndInstall` + relaunch.
+  Подпись minisign проверяется автоматически. Формат `latest.json` (собирает
+  CI job `publish-updates`): платформы `windows-x86_64` (NSIS exe+sig) и
+  `darwin-aarch64` (`.app.tar.gz`+sig). **Linux-апдейтер не хостится** —
+  AppImage ~100 МБ не влезает в лимит KV 25 МБ (deb обновлять вручную).
 - **Android** — апдейтов «без установки» не бывает: любое обновление вне
   магазина — это установка APK поверх (та же подпись — данные сохраняются).
   Схема «в один тап»: баннер в UpdateSection → `installAndroidUpdate` →
-  команда `download_update` (reqwest → `app_cache_dir/apk/*.apk`) → команда
-  `install_apk` → Kotlin-плагин `UpdaterPlugin` (`register_android_plugin`,
-  custom-android) → FileProvider `${applicationId}.aristos.fileprovider`
+  команда `download_update` (reqwest → `app_cache_dir/apk/*.apk`, старые
+  версии подчищаются, безопасное имя файла) → команда `install_apk` →
+  Kotlin-плагин `UpdaterPlugin` (`register_android_plugin`, custom-android) →
+  FileProvider `${applicationId}.aristos.fileprovider`
   (paths: `@xml/aristos_file_paths`, cache/apk) → ACTION_VIEW
   `application/vnd.android.package-archive` → системный установщик.
   Разрешение `REQUEST_INSTALL_PACKAGES` выдаётся пользователем один раз:
@@ -276,6 +310,18 @@ unit")`, panic-abort; так падали 0.1.1–0.1.3). Иконка и цве
   повтор). Фоллбек при отказе прямого пути — открытие APK-URL в браузере,
   как раньше. Баннер появляется только когда версия на канале строго больше
   установленной (`isNewer`) — релиз без bump'а версии телефон не увидит.
+- Регистрация Kotlin-плагина **не фатальна** (`install.rs`): если не поднялся,
+  приложение работает, `install_apk` отвечает ошибкой → фронт откатывается
+  на браузер.
+- UI — `UpdateSection.tsx` в SideMenu (весь Tauri): текущая версия
+  (`getVersion`) + баннер при новой (проверка на монтировании).
+- **Подписи коммитятся в репо** (приватный): APK-keystore
+  `src-tauri/keystore/aristos-sign.b64`, minisign-приватный
+  `src-tauri/keystore/aristos-updater.b64`, пароль `aristos-sign-2026`.
+  Сознательное решение ради стабильной подписи. ⚠️ При переводе репо в
+  публичный — вынести в секреты и **сменить ключи** (ротация подписи APK =
+  апдейты только с удалением старого). Альтернатива через секреты:
+  `ANDROID_KEYSTORE_B64` + `ANDROID_KEYSTORE_PASSWORD`.
 
 Рефреш-триггеры (мобильная ветка `NotificationAgent`): открытие приложения,
 visibilitychange, каждые 6 ч, после синков, смена настроек уведомлений.
@@ -315,6 +361,11 @@ visibilitychange, каждые 6 ч, после синков, смена нас�
    оранжевое время; у «Кесте» сегодняшний день — яркий акцент заголовка
    дня + суффикс « · Бүгін».
 
+Рендер v2: корень `wrap_content` (фон по контенту, без пустоты), шапка —
+иконка приложения (`ic_launcher`) + акцентный заголовок, двухколонные строки
+`widget_row_event` (время/дата акцентом sky-300/sky-700 + название), дедлайны
+— ≤4 строк.
+
 ### Обновления
 
 - `updatePeriodMillis = 30 мин` (системное, провайдеры);
@@ -326,12 +377,15 @@ visibilitychange, каждые 6 ч, после синков, смена нас�
 
 CI после `tauri android init` копирует `cp -r src-tauri/custom-android/. gen/android/`
 поверх сгенерированного проекта: `AndroidManifest.xml` (+3 receiver'а виджетов,
-+разрешения), `MainActivity.kt` (extends TauriActivity), `widgets/*.kt`
-(WidgetData, WidgetRenderer, 3 провайдера), `res/{layout,drawable,xml}/widget_*`.
-Community-плагин `tauri_plugin_widgets` — план Б (0.x, 1 мейнтейнер), не используется.
++`REQUEST_INSTALL_PACKAGES`, +свой FileProvider), `MainActivity.kt` (extends
+TauriActivity), `UpdaterPlugin.kt`, `widgets/*.kt` (WidgetData, WidgetRenderer,
+3 провайдера), `res/{layout,drawable,xml,raw}`. Иконки приложения ставятся
+отдельно: `cp -r src-tauri/icons/android/* gen/android/app/src/main/res/`
+(без этого — дефолтный робот на домашнем экране). Community-плагин
+`tauri_plugin_widgets` — план Б (0.x, 1 мейнтейнер), не используется.
 
 Разрешения оверлей-манифеста: `INTERNET`, `POST_NOTIFICATIONS`,
-`SCHEDULE_EXACT_ALARM`, `VIBRATE`.
+`SCHEDULE_EXACT_ALARM`, `VIBRATE`, `REQUEST_INSTALL_PACKAGES`.
 
 ---
 
@@ -357,7 +411,7 @@ Android WebView не рендерит PDF и `window.open(blob:)` там не р
 | Основные данные | IndexedDB `aristos_db` (v4: subjects, schedules, calendars, settings, canvasCourses, canvasAssignments, platonusYears, pdfFiles) | идентична PWA — один и тот же код `src/lib/db.ts` |
 | Бекапы/JSON-конфиги | `src/lib/backup.ts` | файлы из PWA восстанавливаются в Tauri и наоборот |
 | Настройки/флаги | `localStorage` (у Tauri-WebView свой профиль, не браузерный) | не переносится автоматически — перенос через бекап |
-| Облачный синк | `src/lib/cloud.ts`, воркер `https://aristos-sync.aristoss.workers.dev` (вшит как `DEFAULT_CLOUD_ENDPOINT`) | код+passphrase, клиентское шифрование; **`ALLOWED_ORIGIN` воркера должен включать `http://tauri.localhost,tauri://localhost`** (уже сделано в `sync-worker/wrangler.toml`) — иначе cloud pull из Taurи отклонится CORS'ом |
+| Облачный синк | `src/lib/cloud.ts`, воркер `https://aristos-sync.aristoss.workers.dev` (вшит как `DEFAULT_CLOUD_ENDPOINT`) | код+passphrase, клиентское шифрование; **`ALLOWED_ORIGIN` воркера должен включать `http://tauri.localhost,tauri://localhost`** (уже сделано в `sync-worker/wrangler.toml`) — иначе cloud pull из Tauri отклонится CORS'ом; **на Android это единственный источник синка** |
 | УМКД-PDF | стор `pdfFiles` (блобы) | локально на устройстве, в бекап не входят |
 
 ---
@@ -366,27 +420,32 @@ Android WebView не рендерит PDF и `window.open(blob:)` там не р
 
 ### `src-tauri/tauri.conf.json`
 
-- `identifier`: `kz.yessenov.aristos`; `productName`: Aristos; версия 0.1.0.
-- `withGlobalTauri: true` — **обязателен**: инжект-скрипты синка на внешних
-  страницах зовут `window.__TAURI__.core.invoke('sync_payload')`.
+- `version`: **0.1.4**; `identifier`: `kz.yessenov.aristos`; `productName`: Aristos.
+- `withGlobalTauri: true` — остался (задел IPC; title-канал Платонуса его
+  не требует).
 - Окно `main`: 1200×820, min 420×640, `center: true`.
 - `security.csp: null` (страница грузится под tauri-протоколом; инжекты в
   harvest идут мимо CSP основного окна).
-- `bundle`: targets all, category Education, описания на казахском, иконки
-  png/icns/ico.
+- `plugins.updater`: endpoint `…/api/app/file/latest.json` + minisign pubkey.
+  **Секции `plugins.notification` быть не должно** (§4.3 — крэш старта).
+- `bundle`: targets all, `createUpdaterArtifacts: true` (exe/tar.gz + `.sig`),
+  category Education, иконки png/icns/ico.
 - `build`: `beforeBuildCommand: npm run build`, `frontendDist: ../dist`,
   dev — `http://localhost:5173`.
 
 ### `src-tauri/Cargo.toml`
 
-Зависимости: `tauri` 2, `tauri-plugin-notification` 2, serde/serde_json.
+Зависимости: `tauri` 2; плагины `notification`, `updater`, `process`,
+`opener`; `reqwest` 0.12 (rustls-tls, gzip, json — без default-features),
+`tokio` (time), `percent-encoding`, serde/serde_json.
 Release-профиль: `opt-level = "s"`, `panic = "abort"`, `strip = true`,
 **без LTO** (сборка идёт и на слабой машине юзера; размер — не критерий).
 `crate-type = ["staticlib", "cdylib", "rlib"]` (нужно для мобильных таргетов).
 
 ### Android-специфика
 
-- **ProGuard minify НЕ включать** — ломает notification-плагин.
+- **ProGuard minify НЕ включать** — ломает notification-плагин;
+  `res/raw/keep.xml` держит `ic_notification` против ресурсного шринкера.
 - Сборка universal APK (4 ABI: aarch64/armv7/i686/x86_64) — один файл на все
   устройства.
 
@@ -411,33 +470,42 @@ WebView2 в системе; macOS — WKWebView системный.
 ```bash
 npx tauri android init                                     # один раз
 cp -r src-tauri/custom-android/. src-tauri/gen/android/    # оверлей (после каждого init)
+cp -r src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/  # иконки
 npx tauri android build --apk                              # universal APK
 ```
 
 Нужны JDK 17, Android SDK (platforms;android-34, build-tools;34.0.0), NDK
-(27.2.12479018), Rust-таргеты `aarch64-linux-android`,
+(27.2.x), Rust-таргеты `aarch64-linux-android`,
 `armv7-linux-androideabi`, `i686-linux-android`, `x86_64-linux-android`.
 
 ### CI (`.github/workflows/release.yml`)
 
 Триггеры: **пуш тега `v*`** (публикация GitHub Release) и ручной запуск
-(артефакты в Actions).
+(артефакты в Actions). `permissions: contents: write`.
 
-- **Job desktop** (матрица): `ubuntu-24.04` (deb/AppImage/rpm),
-  `windows-latest` (NSIS exe), `macos-latest` (dmg, без подписи — правый клик
-  → «Открыть», или `xattr -cr /Applications/Aristos.app`). Сборка через
-  `tauri-apps/tauri-action@v0`; на теге — Release с приложенными бандлами,
-  без тега — `upload-artifact` (`desktop-<platform>`, 90 дней).
+- **Job desktop** (матрица ubuntu-24.04 / windows-latest / macos-latest):
+  ключ updater'а из репо (`TAURI_SIGNING_PRIVATE_KEY` через heredoc-stdin —
+  BSD-base64 на macOS не принимает файл аргументом) → `tauri-action` с
+  `includeUpdaterArtifacts: true` → бандлы: deb/AppImage/rpm, NSIS exe,
+  dmg (без подписи — правый клик → «Открыть», или
+  `xattr -cr /Applications/Aristos.app`). Публикация в канал обновлений:
+  Windows заливает exe+.sig в воркер, macOS — `.app.tar.gz`+.sig+dmg.
+  На теге — GitHub Release; без тега — `upload-artifact`
+  (`desktop-<platform>`, 90 дней).
 - **Job android**: JDK17 (temurin), SDK/NDK (sdkmanager ищется прямым путём —
-  не на PATH на ubuntu-24.04), `tauri android init` + оверлей, подпись:
-  секреты `ANDROID_KEYSTORE_B64` (base64 keystore.jks) +
-  `ANDROID_KEYSTORE_PASSWORD`, иначе **эфемерный keystore** — артефакт
-  `keystore.jks` нужно скачать и сохранить, иначе следующие APK не встанут
-  поверх старых. Пароль по умолчанию `aristos-sign-2026`. APK публикуется в
-  Release на теге + артефакт `android-apk`.
+  не на PATH на ubuntu-24.04), `tauri android init` + оверлей + иконки,
+  keystore **из репо** (`grep -qI`: текст = b64 → декодировать, бинарник =
+  копия; иначе секреты `ANDROID_KEYSTORE_B64`/`ANDROID_KEYSTORE_PASSWORD`;
+  иначе эфемерный с артефактом), сборка → **ручная подпись** `zipalign` +
+  `apksigner` (независимо от CLI, пароль `aristos-sign-2026`) →
+  `Aristos_<v>.apk` → заливка в канал обновлений + артефакт + Release.
+- **Job publish-updates** (`needs: [android, desktop]`): собирает
+  `latest.json` (Python: платформы по наличию `.sig` на воркере) и `meta` →
+  PUT в воркер. Если заливка не удалась — проверить, что воркер задеплоен
+  с `APP_UPLOAD_SECRET`.
 
-Релиз: `git tag v0.1.0 && git push origin v0.1.0` → в Release появятся
-exe/dmg/deb/AppImage/APK.
+Релиз: `git tag v0.1.4 && git push origin v0.1.4` → в Release появятся
+exe/dmg/deb/AppImage/APK + канал обновлений получит новую версию.
 
 ---
 
@@ -445,29 +513,36 @@ exe/dmg/deb/AppImage/APK.
 
 ```
 src-tauri/
-  tauri.conf.json          # конфиг приложения (identifier, окно, withGlobalTauri, bundle)
-  Cargo.toml               # tauri 2 + notification; release: opt-level=s, без lto
-  src/lib.rs               # write_widget_data + регистрация команд sync::*
+  tauri.conf.json          # v0.1.4; plugins.updater; БЕЗ plugins.notification
+  Cargo.toml               # + updater/process/opener, reqwest, tokio, percent-encoding
+  src/lib.rs               # плагины + все команды; write_widget_data (двойная запись)
   src/sync.rs              # harvest-окно: sync_open/eval/url/diag/close/payload
-  capabilities/default.json    # main: core + notification + sync-* + widget
-  capabilities/remote-sync.json # harvest на canvas/platonus/id: только sync_payload
-  permissions/aristos.toml     # ACL собственных команд (allow-*)
-  custom-android/          # оверлей поверх gen/android (виджеты, манифест, MainActivity)
-  icons/                   # desktop + ios + android иконки
+  src/canvas.rs            # Canvas-синк в Rust: session_state + sync_native (reqwest)
+  src/install.rs           # download_update + install_apk; не-фатальная регистрация
+  capabilities/default.json     # main: core+notif+updater+process+opener+свои команды
+  capabilities/remote-sync.json # harvest remote-IPC (задел v1)
+  permissions/aristos.toml      # ACL собственных команд (allow-*)
+  custom-android/          # оверлей: манифест (+REQUEST_INSTALL_PACKAGES, +свой
+                           #   FileProvider), MainActivity, UpdaterPlugin.kt,
+                           #   widgets/*.kt, keep.xml, aristos_file_paths.xml
+  keystore/                # aristos-sign.b64 (APK), aristos-updater.b64 (minisign)
+  icons/                   # desktop + ios + android иконки (android/* копируются в CI)
   gen/                     # сгенерированные схемы/проект (в git частично)
 src/lib/
   tauri.ts                 # isTauri / isTauriMobile
-  native-sync.ts           # оркестратор нативного синка (очередь, waiters, логин)
-  injected/canvas-collector.js  # инжект: Canvas API сборщик (порт userscript)
-  injected/platonus-page.js     # инжект: драйвер Платонуса (discover/harvest)
-  reminders.ts             # планирование напоминаний на 7 дней (Android)
-  notifications.ts         # транспорт уведомлений + настройки + notifyOncePerDay
+  native-sync.ts           # оркестратор: Canvas-натив + Платонус title-канал
+  injected/platonus-page.js     # инжект-драйвер Платонуса (canvas-collector.js удалён)
+  reminders.ts             # напоминания + дайджест + группы + largeBody
+  notifications.ts         # транспорт + NOTIF_ICON/iconColor + настройки
+  app-update.ts            # проверка/установка обновлений (mobile + desktop)
   widget-snapshot.ts       # сборка JSON-снапшота для виджетов
   pdf-store.ts             # стор pdfFiles (блобы в IndexedDB)
 src/pages/PdfViewerPage.tsx      # /pdf/:id (pdfjs)
-src/components/layout/NativeSyncSection.tsx  # UI нативного синка (SideMenu)
+src/components/layout/NativeSyncSection.tsx  # UI нативного синка (desktop-only)
+src/components/layout/UpdateSection.tsx      # версия + баннер обновления
 src/components/layout/NotificationAgent.tsx  # тик уведомлений; mobile-ветка
-.github/workflows/release.yml   # desktop матрица + android APK
+.github/workflows/release.yml   # desktop + android + publish-updates
+CHANGELOG.md                    # журнал изменений веб-версии, проигранный при порте
 ```
 
 ---
@@ -476,15 +551,22 @@ src/components/layout/NotificationAgent.tsx  # тик уведомлений; mo
 
 | Симптом | Причина / действие |
 |---|---|
-| Синк просит логин каждый раз | Сессия webview не пережила что-то — это штатно: need-login обрабатывается автоматически, окно логина откроется само. Если SSO завис — проверь `sync_diag` (title `ARISTOS_E\|...`) |
+| Приложение падает при старте (`invalid type: map, expected unit`) | Секция `plugins.notification` в `tauri.conf.json` — убрать (крэш 0.1.1–0.1.3) |
+| Canvas-синк сразу открывает окно логина | Сессия умерла — штатно: превентивная проверка кук; логин один раз, куки персистентны |
+| «балдар жүктелмеді» после успешного Canvas-синка | `scoresDiag`: ретраи enrollments исчерпаны (вуз вынес итоги в LTI-тул) — повторить синк, причина в скобках |
 | `sync-already-running` | Предыдущий синк ещё не завершился — дождись таймаута/завершения |
 | `login-timeout` | 6 минут не ушли со страницы входа — повтори кнопку синка |
 | `platonus-no-periods` | Страница журнала не отдала селекты годов — проверь, что аккаунт видит `/student_register`; studentID ищется в `window.student` |
-| Платонус-период висит до 15 мин и падает таймаутом | Съём оценок по дням кликами долгий — норма для больших периодов; падение = скрипт не дошёл до конца (см. `sync_diag`) |
+| Платонус-период висит до 20 мин и падает `sync-timeout` | Съём оценок по дням кликами долгий — норма для больших периодов; падение = скрипт не дошёл до конца: `sync_diag` → title `ARISTOS_E\|…`; `diag-no-window` = harvest закрылся |
 | Уведомления на десктопе не приходят «по расписанию» | Так и задумано: на десктопе напоминания только in-app (плагин доставил бы их мгновенно) |
+| Уведомления без иконки / серый квадрат | `ic_notification` вырезан ресурсным шринкером (проверь `keep.xml`) — плагин подставляет системный `ic_dialog_info` |
+| Обновление не находится (desktop) | `latest.json` на воркере пуст/не залит (job `publish-updates`) или pubkey в конфиге не совпадает с ключом подписи |
+| Обновление не находится (Android) | `/api/app/meta` не залита; версия релиза не bump'нута (баннер сравнивает строго) |
+| Android: «need-permission» при установке | Право «неизвестные источники» — выдать в открывшихся настройках и повторить |
 | Облачный pull из Tauri падает | `ALLOWED_ORIGIN` воркера должен содержать `http://tauri.localhost,tauri://localhost` (`sync-worker/wrangler.toml`) |
-| Новый APK не ставится поверх старого | Другой подписи — ставь с удалением старого; впредь храни `keystore.jks` (секрет `ANDROID_KEYSTORE_B64`) |
-| Виджеты показывают старое | Они пересчитываются при рендере — открой приложение (onResume обновит) или жди системный тик 30 мин; если пусто — снапшот не писался (синк/открытие не было) |
+| Новый APK не ставится поверх старого | Другая подписи — старый keystore потерян; источник истины теперь в репо (`src-tauri/keystore/aristos-sign.b64`) |
+| Linux не обновляется сам | Так и задумано: AppImage > 25 МБ лимита KV — deb обновлять вручную |
+| Виджеты показывают старое | Они пересчитываются при рендере — открой приложение (onResume обновит) или жди системный тик 30 мин |
 | PDF не открывается на Android | Должен открываться через роут `/pdf/:id` (pdfjs). Если путь идёт через `window.open` — гейт `isTauri()` не сработал |
 | macOS: «приложение повреждено» | Без подписи — `xattr -cr /Applications/Aristos.app` |
 
@@ -492,7 +574,8 @@ src/components/layout/NotificationAgent.tsx  # тик уведомлений; mo
 
 ## 12. Что ещё почитать
 
-- `CONTEXT.md` — сжатый контекст всего проекта (формулы оценок, сторы, история решений).
+- `CONTEXT.md` — сжатый контекст всего проекта (сторы, синк-протокол, формулы оценок, история решений миграции).
+- `CHANGELOG.md` — журнал изменений веб-версии (записи с пометками «Для Tauri»).
 - `docs/canvas-lms.md` — API Canvas: эндпоинты, CSRF, пагинация, поля payload.
 - `docs/platonus.md` — архитектура Платонуса: SSO, student_register, карточки журнала, marksModal.
 - `docs/user-css.md` — пользовательский CSS (modder API).
