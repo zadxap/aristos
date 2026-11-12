@@ -1,10 +1,12 @@
-> **Статус Tauri-порта (11.11):** записи ниже перенесены в Tauri-версию
-> (репо `zadxap/aristos`): 17 файлов скопированы 1-в-1, types/i18n/
-> NotificationAgent замержены, `effectiveDeadline` применён и в
+> **Статус Tauri-порта (13.11):** записи 11.11 и 12.11 перенесены в
+> Tauri-версию (репо `zadxap/aristos`): 11.11 — 17 файлов скопированы 1-в-1,
+> types/i18n/NotificationAgent замержены, `effectiveDeadline` применён и в
 > reminders.ts, в нативном клиенте `canvas.rs` — ретраи enrollments,
 > per-course фолбэк, терпимый парсинг, diag + lock_at, август-фикс в
 > Android-драйвере Платонуса. Ошибки синка в порту сразу с кодами
 > (need-login/login-timeout/...) — regex-таблица не потребовалась.
+> 12.11 — чарты (margin.left) и AI-контекст (расписание/темы/UX чата)
+> запатчены диффами веб-коммитов 1-в-1; CHANGELOG дополнен из веб-репо.
 
 # CHANGELOG — журнал изменений для параллельного порта на Tauri
 
