@@ -25,12 +25,27 @@ fn webview_cookies(app: &AppHandle, url: &str) -> Result<Vec<(String, String)>, 
         .collect())
 }
 
-/// Есть ли живая сессия Canvas (по наличию _csrf_token в куках).
+/// Есть ли живая сессия Canvas: реальный GET /api/v1/users/self с куками
+/// webview. Наличие одного лишь _csrf_token — НЕ признак сессии: Canvas
+/// ставит эту куку анонимному посетителю уже на странице логина, из-за чего
+/// «сессия» находилась за ~1.5 с, окно логина закрывалось до отрисовки
+/// (белый флэш) и синк уходил в вечный need-login.
 #[tauri::command]
 pub async fn canvas_session_state(app: AppHandle) -> Result<Value, String> {
     let cookies = webview_cookies(&app, &format!("{CANVAS_ORIGIN}/"))?;
     let has_csrf = cookies.iter().any(|(n, _)| n == "_csrf_token");
-    Ok(json!({ "hasSession": has_csrf, "cookieCount": cookies.len() }))
+    let cookie_count = cookies.len();
+    let has_session = if has_csrf {
+        match CanvasClient::new(cookies) {
+            // сеть недоступна/таймаут — считаем «сессии нет»: окно логина
+            // останется открытым, всё равно без живой сессии не синкнуться
+            Ok(client) => client.probe_session().await.unwrap_or(false),
+            Err(_) => false,
+        }
+    } else {
+        false
+    };
+    Ok(json!({ "hasSession": has_session, "cookieCount": cookie_count }))
 }
 
 fn csrf_from(cookies: &[(String, String)]) -> Option<String> {
@@ -64,6 +79,20 @@ impl CanvasClient {
             .build()
             .map_err(|e| e.to_string())?;
         Ok(Self { client, cookie_header, csrf })
+    }
+
+    /// Проба сессии: /api/v1/users/self должен ответить 200 (куки живой
+    /// сессии); у анонима — 401 → «сессии нет».
+    async fn probe_session(&self) -> Result<bool, String> {
+        let res = self
+            .client
+            .get(format!("{CANVAS_ORIGIN}/api/v1/users/self"))
+            .header("Accept", "application/json")
+            .header("Cookie", &self.cookie_header)
+            .send()
+            .await
+            .map_err(|e| format!("network: {e}"))?;
+        Ok(res.status().is_success())
     }
 
     /// GET одной страницы API → (json, next-url из Link-заголовка).
