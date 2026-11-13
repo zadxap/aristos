@@ -8,10 +8,37 @@
 //!
 //! Права IPC для внешних страниц: capabilities/remote-sync.json
 //! (remote.urls на canvas/platonus/id.yu.edu.kz, permission allow-sync-payload).
+//!
+//! Диагностика: все события harvest-окна (открытие, навигации, page-load,
+//! закрытие) пишутся в `app_data_dir/sync-debug.log` — на машинах без
+//! консоли (релиз на Windows) это единственный след навигации; devtools
+//! включены фичей `devtools` (правый клик → Inspect в окне).
 
+use std::io::Write;
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const HARVEST_LABEL: &str = "harvest";
+
+/// Лог синка: app_data_dir/sync-debug.log (+ eprintln в dev-консоль).
+fn log_sync(app: &AppHandle, msg: &str) {
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let line = format!("[{ts}] {msg}");
+    #[cfg(debug_assertions)]
+    eprintln!("[sync-debug] {line}");
+    if let Ok(dir) = app.path().app_data_dir() {
+        let _ = std::fs::create_dir_all(&dir);
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(dir.join("sync-debug.log"))
+        {
+            let _ = writeln!(f, "{line}");
+        }
+    }
+}
 
 fn parse_url(url: &str) -> Result<tauri::Url, String> {
     tauri::Url::parse(url).map_err(|e| format!("bad url {url:?}: {e}"))
@@ -22,17 +49,20 @@ fn parse_url(url: &str) -> Result<tauri::Url, String> {
 #[tauri::command]
 pub fn sync_open(app: AppHandle, url: String, visible: bool) -> Result<(), String> {
     let target = parse_url(&url)?;
+    log_sync(&app, &format!("open url={url} visible={visible}"));
     if let Some(win) = app.get_webview_window(HARVEST_LABEL) {
         let same = win.url().map(|u| u == target).unwrap_or(false);
         if same {
             if visible {
                 let _ = win.show();
                 let _ = win.set_focus();
+                log_sync(&app, "open: same url — show+focus");
             }
             return Ok(());
         }
         // другой URL: закрываем и ждём фактического исчезновения лейбла,
         // чтобы не поймать гонку «label already exists» при пересоздании
+        log_sync(&app, "open: different url — closing existing");
         let _ = win.close();
         for _ in 0..40 {
             std::thread::sleep(std::time::Duration::from_millis(50));
@@ -40,19 +70,39 @@ pub fn sync_open(app: AppHandle, url: String, visible: bool) -> Result<(), Strin
                 break;
             }
         }
+        log_sync(&app, "open: existing closed");
     }
+    let nav_app = app.clone();
     let mut builder = WebviewWindowBuilder::new(
         &app,
         HARVEST_LABEL,
         WebviewUrl::External(target),
     )
     .title("Aristos Sync")
-    .inner_size(940.0, 720.0);
+    .inner_size(940.0, 720.0)
+    .on_navigation(move |url| {
+        log_sync(&nav_app, &format!("navigate {url}"));
+        true
+    })
+    .on_page_load(move |win, payload| {
+        log_sync(
+            win.app_handle(),
+            &format!("page-load {:?} {}", payload.event(), payload.url()),
+        );
+    });
     if !visible {
         builder = builder.visible(false);
     }
-    builder.build().map_err(|e| e.to_string())?;
-    Ok(())
+    match builder.build() {
+        Ok(_) => {
+            log_sync(&app, "open: created ok");
+            Ok(())
+        }
+        Err(e) => {
+            log_sync(&app, &format!("open: create FAILED: {e}"));
+            Err(e.to_string())
+        }
+    }
 }
 
 /// Исполнить JS в harvest-окне (инжект-скрипты синка).
@@ -88,6 +138,7 @@ pub fn sync_diag(app: AppHandle) -> Result<serde_json::Value, String> {
 
 #[tauri::command]
 pub fn sync_close(app: AppHandle) -> Result<(), String> {
+    log_sync(&app, "close");
     if let Some(win) = app.get_webview_window(HARVEST_LABEL) {
         let _ = win.close();
     }
