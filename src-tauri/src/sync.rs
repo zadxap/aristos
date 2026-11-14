@@ -19,13 +19,6 @@ use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const HARVEST_LABEL: &str = "harvest";
 
-/// Аргументы WebView2 (обязаны совпадать у ВСЕХ окон — окружение одно):
-/// дефолт wry + отключение GPU-композитинга. Без него на гибридной графике
-/// (Legion/NVIDIA Optimus) второе webview-окно рисуется белым, затем
-/// чернеет — известная проблема WebView2. Композитинг уходит в софт.
-const WEBVIEW_BROWSER_ARGS: &str =
-    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-gpu";
-
 /// Лог синка: app_data_dir/sync-debug.log (+ eprintln в dev-консоль).
 fn log_sync(app: &AppHandle, msg: &str) {
     let ts = std::time::SystemTime::now()
@@ -87,7 +80,6 @@ pub fn sync_open(app: AppHandle, url: String, visible: bool) -> Result<(), Strin
     )
     .title("Aristos Sync")
     .inner_size(940.0, 720.0)
-    .additional_browser_args(WEBVIEW_BROWSER_ARGS)
     .on_navigation(move |url| {
         log_sync(&nav_app, &format!("navigate {url}"));
         true
