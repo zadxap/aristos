@@ -15,6 +15,7 @@ permissions = [
   "allow-canvas-sync-native",
   "allow-download-update",
   "allow-install-apk",
+  "allow-sync-read-log",
 ]
 
 [[permission]]
@@ -71,3 +72,8 @@ commands.allow = ["download_update"]
 identifier = "allow-install-apk"
 description = "Запускает системный установщик APK (UpdaterPlugin, Android)"
 commands.allow = ["install_apk"]
+
+[[permission]]
+identifier = "allow-sync-read-log"
+description = "Читает хвост sync-debug.log для диагностики окна синка в UI"
+commands.allow = ["sync_read_log"]

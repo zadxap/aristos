@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import { useAristosDB } from '@/context/DBContext'
 import { kk } from '@/i18n'
 import {
@@ -68,6 +69,8 @@ export function NativeSyncSection() {
   const [busy, setBusy] = useState(false)
   const [stage, setStage] = useState<string | null>(null)
   const [periods, setPeriods] = useState<PlatonusPeriod[] | null>(null)
+  const [syncLog, setSyncLog] = useState<string | null>(null)
+  const [logOpen, setLogOpen] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const handleCanvas = async () => {
@@ -207,6 +210,29 @@ export function NativeSyncSection() {
           {busy && <Loader2 className="mt-0.5 size-3 shrink-0 animate-spin" />}
           <span className="min-w-0 break-words">{stage ?? ''}</span>
         </p>
+      )}
+
+      {/* Диагностика окна синка: хвост sync-debug.log (создание/навигация/
+          page-load/paint-probe). Помогает разобрать белый экран на Windows. */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          if (!logOpen) {
+            void invoke<string>('sync_read_log')
+              .then((log) => setSyncLog(log))
+              .catch(() => setSyncLog('(не удалось прочитать лог)'))
+          }
+          setLogOpen(!logOpen)
+        }}
+        className="h-7 w-full justify-start gap-2 text-[11px] text-muted-foreground"
+      >
+        {logOpen ? 'Скрыть лог синка' : 'Лог синка'}
+      </Button>
+      {logOpen && syncLog && (
+        <pre className="max-h-48 overflow-auto rounded-lg border border-border/60 bg-muted/40 p-2 text-[10px] leading-relaxed whitespace-pre-wrap break-all">
+          {syncLog}
+        </pre>
       )}
     </div>
   )

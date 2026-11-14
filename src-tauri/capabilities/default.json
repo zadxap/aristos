@@ -18,6 +18,7 @@
     "allow-canvas-session-state",
     "allow-canvas-sync-native",
     "allow-download-update",
-    "allow-install-apk"
+    "allow-install-apk",
+    "allow-sync-read-log"
   ]
 }

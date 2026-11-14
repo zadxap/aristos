@@ -44,6 +44,44 @@ fn parse_url(url: &str) -> Result<tauri::Url, String> {
     tauri::Url::parse(url).map_err(|e| format!("bad url {url:?}: {e}"))
 }
 
+/// Диагностика отрисовки на Windows: через 8с пингуем DOM страницы
+/// (document.title). Если DOM жив, а окно «белое» — известная проблема
+/// отрисовки второго webview-окна WebView2: применяем repaint
+/// (hide/show) и логируем всё в sync-debug.log.
+fn schedule_paint_probe(app: AppHandle) {
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(8));
+        let Some(win) = app.get_webview_window(HARVEST_LABEL) else {
+            log_sync(&app, "paint-probe: окно закрылось до пробы");
+            return;
+        };
+        let _ = win.eval(
+            "try{document.title='ARISTOS_PING|'+location.href}catch(e){document.title='ARISTOS_PING_ERR|'+e.message}",
+        );
+        for _ in 0..5 {
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+            let Some(win) = app.get_webview_window(HARVEST_LABEL) else {
+                return;
+            };
+            let t = win.title().unwrap_or_default();
+            if let Some(url) = t.strip_prefix("ARISTOS_PING|") {
+                log_sync(&app, &format!("paint-probe: DOM жив, url={url} — пробуем repaint"));
+                let _ = win.hide();
+                std::thread::sleep(std::time::Duration::from_millis(150));
+                let _ = win.show();
+                let _ = win.set_focus();
+                log_sync(&app, "paint-probe: repaint hide/show применён");
+                return;
+            }
+            if t.starts_with("ARISTOS_PING_ERR|") {
+                log_sync(&app, &format!("paint-probe: JS ошибка страницы: {t}"));
+                return;
+            }
+        }
+        log_sync(&app, "paint-probe: DOM не ответил за 5с — страница не загрузилась");
+    });
+}
+
 /// Открыть (или переоткрыть с новым URL) harvest-окно.
 /// visible=true — окно логина, false — скрытый harvest.
 #[tauri::command]
@@ -96,6 +134,9 @@ pub fn sync_open(app: AppHandle, url: String, visible: bool) -> Result<(), Strin
     match builder.build() {
         Ok(_) => {
             log_sync(&app, "open: created ok");
+            if visible {
+                schedule_paint_probe(app.clone());
+            }
             Ok(())
         }
         Err(e) => {
@@ -133,6 +174,20 @@ pub fn sync_diag(app: AppHandle) -> Result<serde_json::Value, String> {
             "title": win.title().unwrap_or_default(),
         })),
         None => Ok(serde_json::json!({ "url": "", "title": "NO-WINDOW" })),
+    }
+}
+
+/// Хвост sync-debug.log — для кнопки «Лог синка» в интерфейсе.
+#[tauri::command]
+pub fn sync_read_log(app: AppHandle) -> Result<String, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    match std::fs::read_to_string(dir.join("sync-debug.log")) {
+        Ok(s) => {
+            let lines: Vec<&str> = s.lines().collect();
+            let start = lines.len().saturating_sub(80);
+            Ok(lines[start..].join("\n"))
+        }
+        Err(_) => Ok("(лог пуст — синк ещё не запускался в этой версии)".into()),
     }
 }
 

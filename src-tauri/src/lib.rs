@@ -53,6 +53,7 @@ pub fn run() {
             sync::sync_diag,
             sync::sync_close,
             sync::sync_payload,
+            sync::sync_read_log,
             canvas::canvas_session_state,
             canvas::canvas_sync_native,
         ])
