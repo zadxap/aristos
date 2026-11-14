@@ -19,6 +19,7 @@
     "allow-canvas-sync-native",
     "allow-download-update",
     "allow-install-apk",
-    "allow-sync-read-log"
+    "allow-sync-read-log",
+    "allow-sync-upload-diag"
   ]
 }

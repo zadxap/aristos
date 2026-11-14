@@ -24,7 +24,7 @@ const HARVEST_LABEL: &str = "harvest";
 /// (Legion/NVIDIA Optimus) второе webview-окно рисуется белым, затем
 /// чернеет — известная проблема WebView2. Композитинг уходит в софт.
 const WEBVIEW_BROWSER_ARGS: &str =
-    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-gpu-compositing";
+    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-gpu";
 
 /// Лог синка: app_data_dir/sync-debug.log (+ eprintln в dev-консоль).
 fn log_sync(app: &AppHandle, msg: &str) {
@@ -141,6 +141,32 @@ pub fn sync_diag(app: AppHandle) -> Result<serde_json::Value, String> {
             "title": win.title().unwrap_or_default(),
         })),
         None => Ok(serde_json::json!({ "url": "", "title": "NO-WINDOW" })),
+    }
+}
+
+/// Автодиагностика: sync-debug.log уходит на воркер канала обновлений
+/// (фиксированное имя, перезаписывается), откуда разработчик читает его сам.
+/// В логе только URL и события окна — кук и персональных данных нет.
+#[tauri::command]
+pub async fn sync_upload_diag(app: AppHandle) -> Result<String, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let log = std::fs::read_to_string(dir.join("sync-debug.log"))
+        .unwrap_or_else(|_| "(sync-debug.log пуст)".into());
+    let client = reqwest::Client::new();
+    let res = client
+        .put("https://aristos-sync.aristoss.workers.dev/api/app/file/aristos-sync-diag.log")
+        .header("X-App-Upload-Secret", "343b66f2bafa2ceab5debca4662657a1")
+        .header("Content-Type", "text/plain")
+        .body(log)
+        .send()
+        .await
+        .map_err(|e| format!("upload: {e}"))?;
+    let status = res.status().as_u16();
+    log_sync(&app, &format!("diag upload -> HTTP {status}"));
+    if res.status().is_success() {
+        Ok("uploaded".into())
+    } else {
+        Err(format!("upload: HTTP {status}"))
     }
 }
 

@@ -54,6 +54,7 @@ pub fn run() {
             sync::sync_close,
             sync::sync_payload,
             sync::sync_read_log,
+            sync::sync_upload_diag,
             canvas::canvas_session_state,
             canvas::canvas_sync_native,
         ])

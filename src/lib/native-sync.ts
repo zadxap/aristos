@@ -80,6 +80,9 @@ async function ensureCanvasSession(): Promise<boolean> {
     url: CANVAS_ORIGIN + '/login/canvas',
     visible: true,
   })
+  // авто-диагностика: лог окна синка уходит на воркер при каждом открытии
+  // логина (только URL/события окна, без кук) — разработчик читает сам
+  void invoke('sync_upload_diag').catch(() => {})
   const deadline = Date.now() + 6 * 60_000
   while (Date.now() < deadline) {
     await sleep(1500)
@@ -125,6 +128,7 @@ export async function runCanvasSync(fx: CanvasSyncFx): Promise<CanvasSyncResult>
     try {
       wrapped = await invoke('canvas_sync_native')
     } catch (err) {
+      void invoke('sync_upload_diag').catch(() => {})
       if (!isNeedLogin(err)) throw err
       // сессия умерла прямо во время синка — окно логина и повтор
       fx.onStage('canvas-login')
@@ -275,6 +279,7 @@ export async function discoverPlatonus(): Promise<PlatonusDiscoverResult> {
 /** Видимое окно логина Платонуса (SSO через id.yu.edu.kz) + поллинг URL. */
 async function ensurePlatonusLogin(): Promise<boolean> {
   await invoke('sync_open', { url: PLATONUS_ORIGIN + '/', visible: true })
+  void invoke('sync_upload_diag').catch(() => {})
   const deadline = Date.now() + 6 * 60_000
   let stableSeen = false
   while (Date.now() < deadline) {
