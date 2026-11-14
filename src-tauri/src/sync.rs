@@ -79,7 +79,21 @@ pub fn sync_open(app: AppHandle, url: String, visible: bool) -> Result<(), Strin
         WebviewUrl::External(target),
     )
     .title("Aristos Sync")
-    .inner_size(940.0, 720.0)
+    .inner_size(940.0, 720.0);
+
+    // Отдельный user-data-folder: своё окружение WebView2 для harvest —
+    // никакие чужие блокировки UDF (убитые процессы и т.п.) не мешают
+    // созданию, и куки логина живут в собственном профиле.
+    let udf = app
+        .path()
+        .app_data_dir()
+        .map(|d| d.join("harvest-webview"))
+        .map_err(|e| e.to_string())?;
+    let _ = std::fs::create_dir_all(&udf);
+    log_sync(&app, &format!("open: udf={}", udf.display()));
+    builder = builder.data_directory(udf);
+
+    let mut builder = builder
     .on_navigation(move |url| {
         log_sync(&nav_app, &format!("navigate {url}"));
         true
@@ -178,9 +192,11 @@ pub fn sync_read_log(app: AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 pub fn sync_close(app: AppHandle) -> Result<(), String> {
-    log_sync(&app, "close");
+    log_sync(&app, "close (hide)");
+    // ПРЯЧЕМ, а не закрываем: окружение и куки harvest-профиля должны
+    // остаться живы для следующих синков (jar читается из этого окна).
     if let Some(win) = app.get_webview_window(HARVEST_LABEL) {
-        let _ = win.close();
+        let _ = win.hide();
     }
     Ok(())
 }

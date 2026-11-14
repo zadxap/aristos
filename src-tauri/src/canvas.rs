@@ -12,11 +12,13 @@ const CANVAS_ORIGIN: &str = "https://canvas.yu.edu.kz";
 const MAX_PAGES: usize = 50;
 
 fn webview_cookies(app: &AppHandle, url: &str) -> Result<Vec<(String, String)>, String> {
-    // используется main-окно (jar у всех webview общий); async-команда —
-    // обход документированного deadlock cookies() на Windows
+    // Куки Canvas живут в harvest-профиле (у harvest отдельный UDF с 0.1.12),
+    // читаем из него; fallback — main (совместимость со старыми сборками).
+    // async-команда — обход документированного deadlock cookies() на Windows.
     let win = app
-        .get_webview_window("main")
-        .ok_or_else(|| "no main window".to_string())?;
+        .get_webview_window("harvest")
+        .or_else(|| app.get_webview_window("main"))
+        .ok_or_else(|| "no harvest/main window".to_string())?;
     let parsed = tauri::Url::parse(url).map_err(|e| e.to_string())?;
     let cookies = win.cookies_for_url(parsed).map_err(|e| e.to_string())?;
     Ok(cookies
