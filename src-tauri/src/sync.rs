@@ -19,6 +19,13 @@ use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const HARVEST_LABEL: &str = "harvest";
 
+/// Аргументы WebView2 (обязаны совпадать у ВСЕХ окон — окружение одно):
+/// дефолт wry + отключение GPU-композитинга. Без него на гибридной графике
+/// (Legion/NVIDIA Optimus) второе webview-окно рисуется белым, затем
+/// чернеет — известная проблема WebView2. Композитинг уходит в софт.
+const WEBVIEW_BROWSER_ARGS: &str =
+    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-gpu-compositing";
+
 /// Лог синка: app_data_dir/sync-debug.log (+ eprintln в dev-консоль).
 fn log_sync(app: &AppHandle, msg: &str) {
     let ts = std::time::SystemTime::now()
@@ -42,44 +49,6 @@ fn log_sync(app: &AppHandle, msg: &str) {
 
 fn parse_url(url: &str) -> Result<tauri::Url, String> {
     tauri::Url::parse(url).map_err(|e| format!("bad url {url:?}: {e}"))
-}
-
-/// Диагностика отрисовки на Windows: через 8с пингуем DOM страницы
-/// (document.title). Если DOM жив, а окно «белое» — известная проблема
-/// отрисовки второго webview-окна WebView2: применяем repaint
-/// (hide/show) и логируем всё в sync-debug.log.
-fn schedule_paint_probe(app: AppHandle) {
-    std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_secs(8));
-        let Some(win) = app.get_webview_window(HARVEST_LABEL) else {
-            log_sync(&app, "paint-probe: окно закрылось до пробы");
-            return;
-        };
-        let _ = win.eval(
-            "try{document.title='ARISTOS_PING|'+location.href}catch(e){document.title='ARISTOS_PING_ERR|'+e.message}",
-        );
-        for _ in 0..5 {
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-            let Some(win) = app.get_webview_window(HARVEST_LABEL) else {
-                return;
-            };
-            let t = win.title().unwrap_or_default();
-            if let Some(url) = t.strip_prefix("ARISTOS_PING|") {
-                log_sync(&app, &format!("paint-probe: DOM жив, url={url} — пробуем repaint"));
-                let _ = win.hide();
-                std::thread::sleep(std::time::Duration::from_millis(150));
-                let _ = win.show();
-                let _ = win.set_focus();
-                log_sync(&app, "paint-probe: repaint hide/show применён");
-                return;
-            }
-            if t.starts_with("ARISTOS_PING_ERR|") {
-                log_sync(&app, &format!("paint-probe: JS ошибка страницы: {t}"));
-                return;
-            }
-        }
-        log_sync(&app, "paint-probe: DOM не ответил за 5с — страница не загрузилась");
-    });
 }
 
 /// Открыть (или переоткрыть с новым URL) harvest-окно.
@@ -118,6 +87,7 @@ pub fn sync_open(app: AppHandle, url: String, visible: bool) -> Result<(), Strin
     )
     .title("Aristos Sync")
     .inner_size(940.0, 720.0)
+    .additional_browser_args(WEBVIEW_BROWSER_ARGS)
     .on_navigation(move |url| {
         log_sync(&nav_app, &format!("navigate {url}"));
         true
@@ -134,9 +104,6 @@ pub fn sync_open(app: AppHandle, url: String, visible: bool) -> Result<(), Strin
     match builder.build() {
         Ok(_) => {
             log_sync(&app, "open: created ok");
-            if visible {
-                schedule_paint_probe(app.clone());
-            }
             Ok(())
         }
         Err(e) => {
