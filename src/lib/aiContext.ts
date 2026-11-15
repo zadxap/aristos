@@ -1,7 +1,7 @@
 import type { AcadCalendar, CanvasAssignment, CanvasCourse, DayOfWeek, PlatonusYearRecord, Schedule, Subject } from '@/types'
 import { assignmentWeek, computeCourseGrades } from '@/lib/grade-scheme'
 import { effectiveDeadline } from '@/lib/canvas'
-import { getAcademicWeek } from '@/lib/academic-week'
+import { getAcademicWeek, semesterWeekAnchor, weekStartDate } from '@/lib/academic-week'
 
 export interface AdvisorContextInput {
   activeCourse: number
@@ -27,7 +27,20 @@ export function buildAdvisorContext(input: AdvisorContextInput): string {
   const semester = calendar?.semesters?.find((s) => s.semester === activeSemester)
   const nowDate = new Date()
   if (semester) {
-    lines.push(`Учебная неделя: ${getAcademicWeek(nowDate, semester.semester_start, semester.total_weeks)} из ${semester.total_weeks}`)
+    // Якорь и диапазон недель — в контексте, иначе модель «математически»
+    // пересчитывает недели сама от даты старта (01.09 → «12-я с 17 ноября»),
+    // хотя пары живут по неделям Пн–Вс от понедельника недели старта.
+    const weekNum = getAcademicWeek(nowDate, semester.semester_start, semester.total_weeks)
+    const weekStart = weekStartDate(semester.semester_start, weekNum)
+    const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6)
+    const anchor = semesterWeekAnchor(semester.semester_start)
+    const fmtDM = (d: Date) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`
+    lines.push(
+      `Учебная неделя: ${weekNum} из ${semester.total_weeks} (${fmtDM(weekStart)}–${fmtDM(weekEnd)}). ` +
+      `Недели идут Пн–Вс, неделей 1 считается та, что началась в понедельник недели старта семестра ` +
+      `(старт ${semester.semester_start} → якорь ${fmtDM(anchor)}). ` +
+      `Номер недели для любой даты считай от этого якоря, НЕ арифметикой от даты старта.`
+    )
   }
 
   // Расписание на сегодня и завтра — без этого модель отвечала «данных нет»

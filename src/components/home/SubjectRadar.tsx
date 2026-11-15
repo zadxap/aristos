@@ -11,29 +11,40 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { kk } from "@/i18n"
 import { useAristosDB } from "@/context/DBContext"
+import { courseAdmissionRating } from "@/lib/grade-scheme"
 import { cn } from "@/lib/utils"
 
 /** Радар пәндер: ағымдағы балл 0–100 әр Canvas-курс бойынша.
- *  Маппинг «курс → пән» НЕ требуется — балл берётся прямо из Canvas (current_score). */
+ *  Маппинг «курс → пән» НЕ требуется. Балл — courseAdmissionRating, как везде:
+ *  Canvas-итог → «Рейтинг» из журнала Платонуса → расчёт по тапсырмам.
+ *  (Canvas больше не отдаёт current_score — вуз перенёс оценки в LTI-тул.) */
 export function SubjectRadar({ className }: { className?: string }) {
-  const { canvasCourses } = useAristosDB()
+  const { canvasCourses, canvasAssignments, platonusYears, calendar, activeSemester } =
+    useAristosDB()
+
+  const semester = useMemo(
+    () => calendar?.semesters?.find((s) => s.semester === activeSemester),
+    [calendar, activeSemester]
+  )
 
   const data = useMemo(() => {
     return canvasCourses
-      .map((course) =>
-        course.current_score !== null
-          ? {
-              code: course.code,
-              name: course.name,
-              value: course.current_score,
-            }
+      .map((course) => {
+        const rating = courseAdmissionRating(
+          course,
+          canvasAssignments,
+          platonusYears,
+          semester
+        )
+        return rating.value !== null
+          ? { code: course.code, name: course.name, value: rating.value }
           : null
-      )
+      })
       .filter(
         (item): item is { code: string; name: string; value: number } =>
           item !== null
       )
-  }, [canvasCourses])
+  }, [canvasCourses, canvasAssignments, platonusYears, semester])
 
   return (
     <Card

@@ -167,7 +167,7 @@ syncFailRaw: (msg: string): string => `Синк қатесі: ${msg}`,
   // Radar widget
   radarTitle: "Пәндер радары",
   radarEmpty: "Бағалар жеткіліксіз — радарға кемінде 3 пән керек",
-  radarHint: "Canvas курстарының ағымдағы баллы, 0–100",
+  radarHint: "Курстың ағымдағы баллы: Canvas / Платонус / есептеу, 0–100",
 
   // Local (data-driven) advice fallback
   adviceLocalBadge: "Автокеңес",

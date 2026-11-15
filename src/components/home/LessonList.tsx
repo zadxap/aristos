@@ -1,7 +1,7 @@
 import type { ScheduleEntry, Subject, DayOfWeek } from '@/types'
 import { useEffect, useState } from 'react'
 import { LessonRow } from './LessonRow'
-import { findTopicForLesson } from '@/lib/topic-finder'
+import { findSubjectForEntry, findTopicForLesson } from '@/lib/topic-finder'
 import { kk } from '@/i18n'
 import { BookOpen } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -79,7 +79,7 @@ export function LessonList({
   return (
     <Card className="divide-y divide-border/60 overflow-hidden py-0">
       {entries.map((entry, idx) => {
-        const sub = subjects.find((s) => s.subject_id === entry.subject_id)
+        const sub = findSubjectForEntry(subjects, entry)
         const topic = findTopicForLesson(sub, entry.type, currentWeek)
 
         return (

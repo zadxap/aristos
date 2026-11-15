@@ -7,7 +7,7 @@ import type {
 } from '@/types'
 import { kk } from '@/i18n'
 import { getAcademicWeek } from './academic-week'
-import { findTopicForLesson } from './topic-finder'
+import { findSubjectForEntry, findTopicForLesson } from './topic-finder'
 
 const DAYS_MAP: DayOfWeek[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
@@ -144,7 +144,7 @@ export function getCurrentStatus(
   // If before first lesson of the day (including early morning / night)
   if (currentMinutes < firstStartMin) {
     const minutesUntil = firstStartMin - currentMinutes
-    const sub = subjects.find((s) => s.subject_id === firstEntry.subject_id)
+    const sub = findSubjectForEntry(subjects, firstEntry)
     const topic = findTopicForLesson(sub, firstEntry.type, currentWeek)
 
     return {
@@ -170,7 +170,7 @@ export function getCurrentStatus(
       const progress = duration > 0 ? Math.min(Math.max(elapsed / duration, 0), 1) : 0
       const minutesLeft = endMin - currentMinutes
 
-      const sub = subjects.find((s) => s.subject_id === entry.subject_id)
+      const sub = findSubjectForEntry(subjects, entry)
       const topic = findTopicForLesson(sub, entry.type, currentWeek)
 
       return {
@@ -192,9 +192,7 @@ export function getCurrentStatus(
 
       if (currentMinutes >= endMin && currentMinutes < nextStartMin) {
         const minutesUntilNext = nextStartMin - currentMinutes
-        const nextSub = subjects.find(
-          (s) => s.subject_id === nextEntry.subject_id
-        )
+        const nextSub = findSubjectForEntry(subjects, nextEntry)
         const nextTopic = findTopicForLesson(
           nextSub,
           nextEntry.type,

@@ -173,7 +173,7 @@ syncFailRaw: (msg: string): string => `Ошибка синка: ${msg}`,
   // Radar widget
   radarTitle: "Радар предметов",
   radarEmpty: "Оценок недостаточно — для радара нужно минимум 3 предмета",
-  radarHint: "Текущий балл курсов Canvas, 0–100",
+  radarHint: "Текущий балл курса: Canvas / Платонус / расчёт, 0–100",
 
   // Local (data-driven) advice fallback
   adviceLocalBadge: "Автосовет",

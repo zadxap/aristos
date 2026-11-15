@@ -1,4 +1,29 @@
-import type { Subject } from '@/types'
+import type { Subject, ScheduleEntry } from '@/types'
+
+/**
+ * Finds the subject behind a timetable entry: by subject_id first, then —
+ * when the schedule and the subject JSON disagree on ids (hand-made or
+ * AI-generated JSONs often invent their own subject_id) — by normalized name.
+ * Without the name fallback such a subject silently loses all its lesson topics.
+ */
+export function findSubjectForEntry(
+  subjects: Subject[],
+  entry: Pick<ScheduleEntry, 'subject_id' | 'subject_name'>
+): Subject | undefined {
+  const byId = subjects.find((s) => s.subject_id === entry.subject_id)
+  if (byId) return byId
+
+  const target = normalizeSubjectName(entry.subject_name)
+  if (!target) return undefined
+  return subjects.find((s) => normalizeSubjectName(s.subject_name) === target)
+}
+
+function normalizeSubjectName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[\s«»"'.:,;()\-–—]/g, '')
+    .trim()
+}
 
 /**
  * Finds the topic for a subject based on lesson type and current academic week.
