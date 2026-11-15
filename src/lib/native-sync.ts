@@ -76,8 +76,15 @@ export interface CanvasSyncFx {
 
 /** Окно логина + поллинг сессии по кукам (появился _csrf_token + API отвечает). */
 async function ensureCanvasSession(): Promise<boolean> {
+  // ВАЖНО: прямая форма /login/canvas не принимает пароли университетской
+  // учётки — вход только через SSO (OAuth) портала id.yu.edu.kz. Открываем
+  // корень Canvas: 302 → /login → 302 → /login/openid_connect →
+  // id.yu.edu.kz/openid/authorize?...redirect_uri=canvas.yu.edu.kz/login/oauth2/
+  // callback. Сессия IdP персистентна в профиле harvest-webview, так что
+  // после первого входа эта цепочка проходит автоматически, без ввода пароля.
+  // Окончание входа ловим не по URL, а по кукам (canvas_session_state ниже).
   await invoke('sync_open', {
-    url: CANVAS_ORIGIN + '/login/canvas',
+    url: CANVAS_ORIGIN + '/',
     visible: true,
   })
   // авто-диагностика: лог окна синка уходит на воркер при каждом открытии
