@@ -5,7 +5,25 @@ import "./index.css"
 import App from "./App.tsx"
 import { ThemeProvider } from "@/components/theme-provider.tsx"
 import { LangProvider } from "@/i18n/lang-provider.tsx"
+import { isTauri } from "@/lib/tauri"
 import { applyUserCss, loadUserCss } from "@/lib/theme-presets"
+import { registerSW } from "virtual:pwa-register"
+
+// Service worker — только веб/PWA. В Tauri ассеты зашиты в exe: SW там не
+// даёт ничего, но переживает обновления приложения (HTTP-кэш tauri.localhost
+// не отдаёт свежий sw.js) и молча подсовывает код прошлой версии — окно
+// логина синка, например, открывалось по старым URL после апдейта.
+// Заодно снимаем SW, успевший прописаться у машин со старых версий.
+if (isTauri()) {
+  navigator.serviceWorker
+    ?.getRegistrations()
+    .then((rs) => {
+      for (const r of rs) r.unregister()
+    })
+    .catch(() => {})
+} else {
+  registerSW({ immediate: true })
+}
 
 // Пользовательский CSS (modder API v0) — до первого рендера, чтобы не мигало
 applyUserCss(loadUserCss())

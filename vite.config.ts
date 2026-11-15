@@ -11,6 +11,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      // Авто-инжект registerSW.js УБРАН: в Tauri (tauri.localhost) SW
+      // переживает обновления приложения и подсовывает старый бандл
+      // (HTTP-кэш протокола не даёт браузеру увидеть новый sw.js) —
+      // после апдейта приложение молча работало на коде прошлой версии.
+      // Регистрация теперь только на вебе — вручную в main.tsx.
+      injectRegister: null,
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "icons/*.png"],
       manifest: {
         name: "Aristos — Студенттік дашборд",
