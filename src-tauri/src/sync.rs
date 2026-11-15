@@ -46,8 +46,16 @@ fn parse_url(url: &str) -> Result<tauri::Url, String> {
 
 /// Открыть (или переоткрыть с новым URL) harvest-окно.
 /// visible=true — окно логина, false — скрытый harvest.
+///
+/// ОБЯЗАН быть async: создание webview-окна из СИНХРОННОЙ команды на
+/// Windows дедлок-ится навсегда внутри create_environment/create_controller
+/// (колбэк WebView2 не доставляется в STA-поток, который сам находится
+/// внутри COM-диспетчеризации IPC) — главный поток замирает в
+/// wait_with_pump, всё приложение перестаёт отвечать. См. wry#583 и
+/// доку WebviewWindowBuilder: «On Windows, this function deadlocks when
+/// used in a synchronous command — use async commands».
 #[tauri::command]
-pub fn sync_open(app: AppHandle, url: String, visible: bool) -> Result<(), String> {
+pub async fn sync_open(app: AppHandle, url: String, visible: bool) -> Result<(), String> {
     let target = parse_url(&url)?;
     log_sync(&app, &format!("open url={url} visible={visible}"));
     if let Some(win) = app.get_webview_window(HARVEST_LABEL) {
