@@ -386,7 +386,7 @@ syncFailRaw: (msg: string): string => `Ошибка синка: ${msg}`,
   exportFailed: "Не удалось экспортировать данные. Попробуйте ещё раз.",
   menuFooterStats: (s: number, c: number, p: number): string =>
     `Предметы: ${s} · Canvas: ${c} · Платонус: ${p} ${plural(p, "период", "периода", "периодов")}`,
-  offlinePwa: "Aristos v0.2 • Офлайн PWA",
+  offlinePwa: "Aristos v{v} • Офлайн PWA",
   navAria: "Основные разделы",
   navMore: "Ещё",
   sectionGraded: "Оценённые работы",

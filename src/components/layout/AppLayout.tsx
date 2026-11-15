@@ -7,6 +7,7 @@ import { BottomNav } from "./BottomNav"
 import { sideMenuStore } from "@/lib/menu-store"
 import { useAristosDB } from "@/context/DBContext"
 import { kk } from "@/i18n"
+import { withVersion } from "@/lib/app-version"
 import { Menu, Settings2, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -146,7 +147,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             </Button>
             {!collapsed && (
               <p className="text-center text-[11px] text-muted-foreground">
-                {kk.offlinePwa}
+                {withVersion(kk.offlinePwa)}
               </p>
             )}
           </div>

@@ -377,7 +377,7 @@ syncFailRaw: (msg: string): string => `Синк қатесі: ${msg}`,
   exportFailed: "Деректерді экспорттау мүмкін болмады. Қайталап көріңіз.",
   menuFooterStats: (s: number, c: number, p: number): string =>
     `Пәндер: ${s} · Canvas: ${c} · Платонус: ${p} кезең`,
-  offlinePwa: "Aristos v0.2 • Офлайн PWA",
+  offlinePwa: "Aristos v{v} • Офлайн PWA",
   navAria: "Негізгі бөлімдер",
   navMore: "Көбірек",
   sectionGraded: "Бағаланған жұмыстар",

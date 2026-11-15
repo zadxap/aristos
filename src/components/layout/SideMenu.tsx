@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { kk, LANGS } from "@/i18n"
 import { cn } from "@/lib/utils"
 import { isTauri, isTauriMobile } from "@/lib/tauri"
+import { withVersion } from "@/lib/app-version"
 import {
   THEME_PRESETS,
   applyThemePreset,
@@ -567,7 +568,7 @@ export function SideMenu({ isOpen, onOpen, onClose }: SideMenuProps) {
           )}
         </p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          {kk.offlinePwa}
+          {withVersion(kk.offlinePwa)}
         </p>
       </div>
     </div>

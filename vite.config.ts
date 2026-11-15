@@ -1,11 +1,24 @@
 import path from "path"
+import { readFileSync } from "node:fs"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
 
+// Версия — единый источник правды: tauri.conf.json. Вшивается в бандл
+// (define ниже), чтобы футер/интерфейс показывали её же и на вебе, и в
+// Tauri, без дублирования в package.json и i18n-строках.
+const APP_VERSION = (
+  JSON.parse(
+    readFileSync(path.resolve(import.meta.dirname, "./src-tauri/tauri.conf.json"), "utf-8"),
+  ) as { version: string }
+).version
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
   plugins: [
     react(),
     tailwindcss(),
